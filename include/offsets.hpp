@@ -148,5 +148,305 @@ namespace offsets {
         inline constexpr uintptr_t ChildrenEnd = 0x8;
         inline constexpr uintptr_t ChildrenStart = 0x78;
         inline constexpr uintptr_t ClassDescriptor = 0x18;
+        inline constexpr uintptr_t ClassName = 0x8;
+        inline constexpr uintptr_t ComponentMap = 0x38;
+        inline constexpr uintptr_t Name = 0xB0;
+        inline constexpr uintptr_t Parent = 0x70;
     }
-}
+
+    namespace Lighting {
+        inline constexpr uintptr_t Ambient = 0xE0;
+        inline constexpr uintptr_t Atmosphere = 0x1F0;
+        inline constexpr uintptr_t Brightness = 0x128;
+        inline constexpr uintptr_t ClockTime = 0x1C0;
+        inline constexpr uintptr_t ColorShift_Bottom = 0xEC;
+        inline constexpr uintptr_t ColorShift_Top = 0xF8;
+        inline constexpr uintptr_t EnvironmentDiffuseScale = 0x12C;
+        inline constexpr uintptr_t EnvironmentSpecularScale = 0x130;
+        inline constexpr uintptr_t ExposureCompensation = 0x134;
+        inline constexpr uintptr_t FogColor = 0x104;
+        inline constexpr uintptr_t FogEnd = 0x13C;
+        inline constexpr uintptr_t FogStart = 0x140;
+        inline constexpr uintptr_t OutdoorAmbient = 0x110;
+        inline constexpr uintptr_t ShadowSoftness = 0x148;
+        inline constexpr uintptr_t Sky = 0x1E0;
+    }
+
+    namespace LightingParameters {
+        inline constexpr uintptr_t GeographicLatitude = 0x198;
+        inline constexpr uintptr_t LightColor = 0x164;
+        inline constexpr uintptr_t LightDirection = 0x170;
+        inline constexpr uintptr_t SkyAmbient = 0x158;
+        inline constexpr uintptr_t SkyAmbient2 = 0x19C;
+        inline constexpr uintptr_t Source = 0x17C;
+        inline constexpr uintptr_t TrueMoonPosition = 0x18C;
+        inline constexpr uintptr_t TrueSunPosition = 0x180;
+    }
+
+    namespace LocalScript {
+        inline constexpr uintptr_t Bytecode = 0x1A8;
+        inline constexpr uintptr_t Hash = 0xE8;
+    }
+
+    namespace MaterialColors {
+        inline constexpr uintptr_t Asphalt = 0x30;
+        inline constexpr uintptr_t Basalt = 0x27;
+        inline constexpr uintptr_t Brick = 0xF;
+        inline constexpr uintptr_t Cobblestone = 0x33;
+        inline constexpr uintptr_t Concrete = 0xC;
+        inline constexpr uintptr_t CrackedLava = 0x2D;
+        inline constexpr uintptr_t Glacier = 0x1B;
+        inline constexpr uintptr_t Grass = 0x6;
+        inline constexpr uintptr_t Ground = 0x2A;
+        inline constexpr uintptr_t Ice = 0x36;
+        inline constexpr uintptr_t LeafyGrass = 0x39;
+        inline constexpr uintptr_t Limestone = 0x3F;
+        inline constexpr uintptr_t Mud = 0x24;
+        inline constexpr uintptr_t Pavement = 0x42;
+        inline constexpr uintptr_t Rock = 0x18;
+        inline constexpr uintptr_t Salt = 0x3C;
+        inline constexpr uintptr_t Sand = 0x12;
+        inline constexpr uintptr_t Sandstone = 0x21;
+        inline constexpr uintptr_t Slate = 0x9;
+        inline constexpr uintptr_t Snow = 0x1E;
+        inline constexpr uintptr_t WoodPlanks = 0x15;
+    }
+
+    namespace MeshPart {
+        inline constexpr uintptr_t MeshId = 0x2F8;
+        inline constexpr uintptr_t TextureId = 0x328;
+    }
+
+    namespace ModuleScript {
+        inline constexpr uintptr_t Bytecode = 0x150;
+        inline constexpr uintptr_t Hash = 0xE8;
+    }
+
+    namespace MouseService {
+        inline constexpr uintptr_t InputObject = 0x118;
+    }
+
+    namespace Player {
+        inline constexpr uintptr_t AccountAge = 0x354;
+        inline constexpr uintptr_t Character = 0x3D8;
+        inline constexpr uintptr_t DisplayName = 0x150;
+        inline constexpr uintptr_t HealthDisplayDistance = 0x388;
+        inline constexpr uintptr_t LocaleId = 0x730;
+        inline constexpr uintptr_t NameDisplayDistance = 0x398;
+        inline constexpr uintptr_t Team = 0x2D0;
+        inline constexpr uintptr_t TeamColor = 0x3A4;
+        inline constexpr uintptr_t UserId = 0x2F8;
+    }
+
+    namespace Players {
+        inline constexpr uintptr_t LocalPlayer = 0x148;
+    }
+
+    namespace Primitive {
+        inline constexpr uintptr_t AssemblyAngularVelocity = 0x104;
+        inline constexpr uintptr_t AssemblyLinearVelocity = 0xF8;
+        inline constexpr uintptr_t CFrame = 0xC8;
+        inline constexpr uintptr_t Material = 0x23E;
+        inline constexpr uintptr_t Orientation = 0xC8;
+        inline constexpr uintptr_t Position = 0xEC;
+        inline constexpr uintptr_t PrimitiveFlags = 0x1B6;
+        inline constexpr uintptr_t Rotation = 0xC8;
+        inline constexpr uintptr_t Size = 0x1B8;
+    }
+
+    namespace PrimitiveFlags {
+        inline constexpr uintptr_t Anchored = 0x2;
+        inline constexpr uintptr_t CanCollide = 0x8;
+        inline constexpr uintptr_t CanQuery = 0x20;
+        inline constexpr uintptr_t CanTouch = 0x10;
+    }
+
+    namespace ProximityPrompt {
+        inline constexpr uintptr_t ActionText = 0xC8;
+        inline constexpr uintptr_t Enabled = 0x14E;
+        inline constexpr uintptr_t HoldDuration = 0x138;
+        inline constexpr uintptr_t KeyboardKeyCode = 0x13C;
+        inline constexpr uintptr_t MaxActivationDistance = 0x140;
+        inline constexpr uintptr_t ObjectText = 0xE8;
+        inline constexpr uintptr_t RequiresLineOfSight = 0x14F;
+    }
+
+    namespace RenderView {
+        inline constexpr uintptr_t LightingValid = 0x220;
+        inline constexpr uintptr_t SkyboxValid = 0x28D;
+    }
+
+    namespace Seat {
+        inline constexpr uintptr_t Occupant = 0x218;
+    }
+
+    namespace Sky {
+        inline constexpr uintptr_t MoonAngularSize = 0x25C;
+        inline constexpr uintptr_t MoonTextureId = 0xE0;
+        inline constexpr uintptr_t SkyboxBk = 0x110;
+        inline constexpr uintptr_t SkyboxDn = 0x140;
+        inline constexpr uintptr_t SkyboxFt = 0x170;
+        inline constexpr uintptr_t SkyboxLf = 0x1A0;
+        inline constexpr uintptr_t SkyboxOrientation = 0x250;
+        inline constexpr uintptr_t SkyboxRt = 0x1D0;
+        inline constexpr uintptr_t SkyboxUp = 0x200;
+        inline constexpr uintptr_t StarCount = 0x260;
+        inline constexpr uintptr_t SunAngularSize = 0x264;
+        inline constexpr uintptr_t SunTextureId = 0x230;
+    }
+
+    namespace SpecialMesh {
+        inline constexpr uintptr_t MeshId = 0x110;
+        inline constexpr uintptr_t Offset = 0xD0;
+        inline constexpr uintptr_t Scale = 0xDC;
+        inline constexpr uintptr_t TextureId = 0x140;
+    }
+
+    namespace TaskScheduler {
+        inline constexpr uintptr_t JobEnd = 0xD0;
+        inline constexpr uintptr_t JobName = 0x18;
+        inline constexpr uintptr_t JobStart = 0xC8;
+        inline constexpr uintptr_t MaxFps = 0xB0;
+        inline constexpr uintptr_t Pointer = 0x8179078;
+        // task.defer: defer execution to next frame
+        // Pattern: 48 89 5C 24 08 48 89 6C 24 10 56 57 41 56 48 81 EC (17 bytes, 1 wildcard)
+        inline constexpr uintptr_t TaskDefer     = 0xa76d10;
+    }
+
+    namespace Team {
+        inline constexpr uintptr_t TeamColor = 0xD0;
+    }
+
+    namespace Terrain {
+        inline constexpr uintptr_t GrassLength = 0x1F0;
+        inline constexpr uintptr_t MaterialColors = 0x4A0;
+        inline constexpr uintptr_t WaterColor = 0x1E0;
+        inline constexpr uintptr_t WaterReflectance = 0x1F8;
+        inline constexpr uintptr_t WaterTransparency = 0x1FC;
+        inline constexpr uintptr_t WaterWaveSize = 0x200;
+        inline constexpr uintptr_t WaterWaveSpeed = 0x204;
+    }
+
+    namespace TextButton {
+        inline constexpr uintptr_t AutoButtonColor = 0x9CC;
+        inline constexpr uintptr_t ContentText = 0xDD8;
+        inline constexpr uintptr_t Font = 0x10F0;
+        inline constexpr uintptr_t LineHeight = 0xED0;
+        inline constexpr uintptr_t LocalizedText = 0xDD8;
+        inline constexpr uintptr_t MaxVisibleGraphemes = 0x10FC;
+        inline constexpr uintptr_t Modal = 0x9CD;
+        inline constexpr uintptr_t RichText = 0xFCE;
+        inline constexpr uintptr_t Selected = 0x9CE;
+        inline constexpr uintptr_t Text = 0xDD8;
+        inline constexpr uintptr_t TextColor3 = 0x10D8;
+        inline constexpr uintptr_t TextDirection = 0xF70;
+        inline constexpr uintptr_t TextScaled = 0xDC1;
+        inline constexpr uintptr_t TextSize = 0x1104;
+        inline constexpr uintptr_t TextStrokeColor3 = 0x10E4;
+        inline constexpr uintptr_t TextStrokeTransparency = 0x1108;
+        inline constexpr uintptr_t TextTransparency = 0x110C;
+        inline constexpr uintptr_t TextTruncate = 0x1110;
+        inline constexpr uintptr_t TextWrapped = 0xFC8;
+        inline constexpr uintptr_t TextXAlignment = 0x1114;
+        inline constexpr uintptr_t TextYAlignment = 0xF18;
+    }
+
+    namespace TextLabel {
+        inline constexpr uintptr_t ContentText = 0xB58;
+        inline constexpr uintptr_t Font = 0xE70;
+        inline constexpr uintptr_t LineHeight = 0xC50;
+        inline constexpr uintptr_t LocalizedText = 0xB58;
+        inline constexpr uintptr_t MaxVisibleGraphemes = 0xE7C;
+        inline constexpr uintptr_t RichText = 0xD4E;
+        inline constexpr uintptr_t Text = 0xB58;
+        inline constexpr uintptr_t TextColor3 = 0xE58;
+        inline constexpr uintptr_t TextDirection = 0xCF0;
+        inline constexpr uintptr_t TextScaled = 0xB41;
+        inline constexpr uintptr_t TextSize = 0xE84;
+        inline constexpr uintptr_t TextStrokeColor3 = 0xE64;
+        inline constexpr uintptr_t TextStrokeTransparency = 0xE88;
+        inline constexpr uintptr_t TextTransparency = 0xE8C;
+        inline constexpr uintptr_t TextTruncate = 0xE90;
+        inline constexpr uintptr_t TextWrapped = 0xD48;
+        inline constexpr uintptr_t TextXAlignment = 0xE94;
+        inline constexpr uintptr_t TextYAlignment = 0xC98;
+    }
+
+    namespace Tool {
+        inline constexpr uintptr_t CanBeDropped = 0x4D8;
+        inline constexpr uintptr_t Enabled = 0x4D9;
+        inline constexpr uintptr_t Grip = 0x4A8;
+        inline constexpr uintptr_t GripForward = 0x4C0;
+        inline constexpr uintptr_t GripPos = 0x4CC;
+        inline constexpr uintptr_t GripRight = 0x4A8;
+        inline constexpr uintptr_t GripUp = 0x4B4;
+        inline constexpr uintptr_t ManualActivationOnly = 0x4DA;
+        inline constexpr uintptr_t RequiresHandle = 0x4DB;
+        inline constexpr uintptr_t Tooltip = 0x488;
+    }
+
+    namespace Value {
+        inline constexpr uintptr_t Value = 0xD0;
+    }
+
+    namespace VehicleSeat {
+        inline constexpr uintptr_t MaxSpeed = 0x230;
+        inline constexpr uintptr_t Occupant = 0x210;
+        inline constexpr uintptr_t SteerFloat = 0x238;
+        inline constexpr uintptr_t ThrottleFloat = 0x240;
+        inline constexpr uintptr_t Torque = 0x244;
+        inline constexpr uintptr_t TurnSpeed = 0x248;
+    }
+
+    namespace VisualEngine {
+        inline constexpr uintptr_t Dimensions = 0xAB0;
+        inline constexpr uintptr_t FakeDataModel = 0xA90;
+        inline constexpr uintptr_t Pointer = 0x8306B58;
+        inline constexpr uintptr_t RenderView = 0xBB8;
+        inline constexpr uintptr_t ViewMatrix = 0x150;
+    }
+
+    namespace Workspace {
+        inline constexpr uintptr_t CurrentCamera = 0x4C0;
+        inline constexpr uintptr_t ReadOnlyGravity = 0x9D0;
+        inline constexpr uintptr_t World = 0x418;
+    }
+
+    namespace World {
+        inline constexpr uintptr_t Gravity = 0x210;
+        inline constexpr uintptr_t Primitives = 0x288;
+        inline constexpr uintptr_t WorldSteps = 0x680;
+    }
+
+    // ============================================================
+    // Luau VM Functions
+    //
+    // CARA UPDATE: Jalankan BloxHubInjector.exe → scan akan print
+    // function address dengan RVA. Copy RVA ke sini.
+    // Pattern scan code: BloxHubInjector/src/main.cpp line 51-121
+    // Lihat SCANNER.md untuk dokumentasi lengkap.
+    //
+    // Didapat dari runtime scan via kernel driver (29 Juni 2026)
+    // ============================================================
+    namespace LuaVM {
+        // luau_load: parse + compile Lua source → bytecode
+        // Pattern: 48 89 5C 24 10 48 89 74 24 18 57 48 83 EC 30 (15 bytes)
+        inline constexpr uintptr_t LuauLoad      = 0x7d0ae0;
+        // lua_resume: resume a coroutine
+        // Pattern: 48 89 5C 24 10 48 89 6C 24 18 56 57 41 56 48 83 EC 50 (18 bytes)
+        inline constexpr uintptr_t LuaResume     = 0x771fb0;
+        // lua_newthread: create new coroutine (lua_State*)
+        // Pattern: 48 89 5C 24 08 57 48 83 EC 20 48 8B F9 (13 bytes — may have false positives)
+        inline constexpr uintptr_t LuaNewThread  = 0x645330;
+    }
+
+    namespace ScriptContext {
+        // Offset lua_State* dari ScriptContext object
+        // Divalidasi via runtime scan, ini starting point
+        inline constexpr uintptr_t LuaState      = 0x80;
+        inline constexpr uintptr_t LuaStateFallB = 0x88; // fallback jika 0x80 kosong
+        // Offset ExecContext / identity level (untuk set identity 6/8)
+        inline constexpr uintptr_t ExecContext    = 0x90;
+    }
+
+} // namespace offsets

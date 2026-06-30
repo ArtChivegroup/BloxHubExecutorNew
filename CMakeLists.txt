@@ -7,8 +7,50 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 # Set output directories
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
-set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
+
+# pe_bliss library
+add_library(pe_bliss STATIC
+    vendor/pe_bliss/entropy.cpp
+    vendor/pe_bliss/file_version_info.cpp
+    vendor/pe_bliss/message_table.cpp
+    vendor/pe_bliss/pe_base.cpp
+    vendor/pe_bliss/pe_bound_import.cpp
+    vendor/pe_bliss/pe_checksum.cpp
+    vendor/pe_bliss/pe_debug.cpp
+    vendor/pe_bliss/pe_directory.cpp
+    vendor/pe_bliss/pe_dotnet.cpp
+    vendor/pe_bliss/pe_exception.cpp
+    vendor/pe_bliss/pe_exception_directory.cpp
+    vendor/pe_bliss/pe_exports.cpp
+    vendor/pe_bliss/pe_factory.cpp
+    vendor/pe_bliss/pe_imports.cpp
+    vendor/pe_bliss/pe_load_config.cpp
+    vendor/pe_bliss/pe_properties.cpp
+    vendor/pe_bliss/pe_properties_generic.cpp
+    vendor/pe_bliss/pe_rebuilder.cpp
+    vendor/pe_bliss/pe_relocations.cpp
+    vendor/pe_bliss/pe_resource_manager.cpp
+    vendor/pe_bliss/pe_resource_viewer.cpp
+    vendor/pe_bliss/pe_resources.cpp
+    vendor/pe_bliss/pe_rich_data.cpp
+    vendor/pe_bliss/pe_section.cpp
+    vendor/pe_bliss/pe_tls.cpp
+    vendor/pe_bliss/resource_bitmap_reader.cpp
+    vendor/pe_bliss/resource_bitmap_writer.cpp
+    vendor/pe_bliss/resource_cursor_icon_reader.cpp
+    vendor/pe_bliss/resource_cursor_icon_writer.cpp
+    vendor/pe_bliss/resource_data_info.cpp
+    vendor/pe_bliss/resource_message_list_reader.cpp
+    vendor/pe_bliss/resource_string_table_reader.cpp
+    vendor/pe_bliss/resource_version_info_reader.cpp
+    vendor/pe_bliss/resource_version_info_writer.cpp
+    vendor/pe_bliss/utils.cpp
+    vendor/pe_bliss/version_info_editor.cpp
+    vendor/pe_bliss/version_info_viewer.cpp
+)
+target_include_directories(pe_bliss PUBLIC ${CMAKE_SOURCE_DIR}/vendor/pe_bliss)
 
 # BloxHubInternal DLL
 add_library(BloxHubInternal SHARED
@@ -22,6 +64,12 @@ add_executable(BloxHubInjector
     src/injector/manual_map.cpp
 )
 target_include_directories(BloxHubInjector PRIVATE ${CMAKE_SOURCE_DIR}/include)
-
-# Link Windows libraries
 target_link_libraries(BloxHubInjector PRIVATE user32 kernel32)
+
+# BloxHubLoader EXE
+add_executable(BloxHubLoader
+    src/BloxHubLoader.cpp
+    vendor/pe/pe.cpp
+)
+target_include_directories(BloxHubLoader PRIVATE ${CMAKE_SOURCE_DIR}/include ${CMAKE_SOURCE_DIR}/vendor)
+target_link_libraries(BloxHubLoader PRIVATE pe_bliss)
