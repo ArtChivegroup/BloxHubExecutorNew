@@ -4,12 +4,14 @@
 ## Bug Aktif
 
 ### 1. Roblox Damaged (Import Hijacking)
-**Status**: Critical  
-**Deskripsi**: Ketika menggunakan BloxHubLoader untuk memodifikasi RobloxPlayerBeta.exe, Roblox menampilkan pesan "Roblox Damaged" dan tidak bisa dibuka.  
-**Kemungkinan Penyebab**:
-- Hyperion memverifikasi checksum/integritas file Roblox
-- Modifikasi Import Table terdeteksi oleh anti-tamper
-- PE header yang diubah tidak sesuai dengan ekspektasi Roblox
+**Status**: Critical, Terdeteksi & Tidak Bisa Diperbaiki  
+**Deskripsi**: Ketika menggunakan BloxHubLoader/BloxHub.exe untuk memodifikasi Import Table RobloxPlayerBeta.exe, Roblox menampilkan pesan "Roblox has missing or damaged files. Please reinstall it." dan tidak bisa dibuka.  
+**Fakta**:
+- Backup dan restore otomatis bekerja dengan sempurna!
+- Copy DLL ke direktori Roblox berhasil!
+- Modifikasi Import Table berhasil (pe_bliss tidak error)!
+- Sudah coba ganti nama section dan perbaiki checksum — **tetap saja terdeteksi!**  
+**Kesimpulan**: Import Hijacking tidak bisa digunakan untuk melewati Hyperion saat ini!
 
 ### 2. Koneksi TCP Gagal (Silent Bridge)
 **Status**: Active  
@@ -31,5 +33,6 @@
 - Crash karena akses memory yang tidak valid
 
 ## Catatan Penting
-- Semua testing untuk Notepad dihapus karena tidak relevan dan tidak berhasil
-- Fokus sekarang adalah membuat injector yang bekerja untuk Roblox dengan stealth
+- ✅ **BloxHub.exe (Modern Loader Dasar) Sudah Berjalan**: Backup, copy DLL, dan restore bekerja!
+- ❌ **Import Hijack Tidak Bisa Lewati Hyperion**: Ini adalah masalah utama!
+- 📝 **Fokus Sekarang**: Cari cara bypass "Roblox Damaged"!

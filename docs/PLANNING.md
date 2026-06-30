@@ -8,24 +8,20 @@ BloxHub akan diadaptasi ke **Modern Loader** yang memisahkan frontend dan backen
 
 ## Versi 1.0 - Dasar (Belum Selesai, Perlu Improvement & Testing)
 - [x] Setup project CMake
-- [ ] Implementasi BloxHubLoader (Import Hijacking) - Perlu fix "Roblox Damaged"
-- [ ] Implementasi BloxHubInjector (Manual Map) - Perlu testing & improvement stealth
-- [ ] Implementasi BloxHubInternal.dll (logging dasar) - Perlu improve stability
+- [x] Implementasi BloxHubLoader (Import Hijacking) - **DICABAIKAN! Import Hijack TERDETEKSI Hyperion!**
+- [x] Implementasi BloxHubInjector (Manual Map) - **SUDAH TESTED BERHASIL DI NOTEPAD!**
+- [x] Implementasi BloxHubInternal.dll (logging dasar) - **SUDAH TESTED BERHASIL DI NOTEPAD!**
+- [x] Implementasi BloxHub.exe (Modern Loader Tahap 1: Dasar) - **SUDAH TESTED! Backup/Copy/Restore bekerja, tapi Import Hijack gagal di Roblox!**
 
 ---
 
-## Versi 2.0 - Modern Loader (Tahap 1: Dasar)
-- [ ] Gabungkan BloxHubLoader dan BloxHubClient menjadi **BloxHub.exe** (Modern Loader)
-- [ ] Implementasi **Smart Import Hijacking**:
-  - Auto-detect folder versi Roblox saat ini
-  - Backup otomatis RobloxPlayerBeta.exe
-  - Generate nama DLL acak (mirip DLL sistem, misal: `msvcp140_app.dll`, `winmm.dll`)
-  - Modifikasi Import Table dengan nama DLL acak tersebut
-- [ ] Implementasi **Restore/Uninject**:
-  - Restore RobloxPlayerBeta.exe dari backup saat Roblox ditutup
-  - Hapus FakeDLL.dll dari folder Roblox otomatis
+## Versi 2.0 - Modern Loader (Switch ke Manual Map Injection)
+- [x] Gabungkan BloxHubLoader dan BloxHubClient menjadi **BloxHub.exe** (Modern Loader Dasar - Backup/Copy DLL/Restore sudah bekerja!)
+- [ ] TINGGAL Import Hijacking dan Ganti ke **Manual Map Injection dengan CFG Bypass! (lihat EXAMPLE PROJECT punya CFG Bypass!)
+- [ ] Implementasi **Manual Map Injector dengan CFG Bypass di `src/injector/manual_map.cpp`
+- [ ] Implementasi **Dynamic Payload Fetching (opsional, nanti)
 - [ ] Fix bug koneksi TCP listener (DLL side)
-- [ ] Implementasi **Dynamic Port Handshake**: Port TCP Silent Bridge dihitung secara dinamis per-sesi
+- [ ] Implementasi **Dynamic Port Handshake**: Port TCP Silent Bridge dihitung secara dinamis per sesi
 
 ---
 

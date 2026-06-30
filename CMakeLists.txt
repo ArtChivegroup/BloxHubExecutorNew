@@ -73,3 +73,11 @@ add_executable(BloxHubLoader
 )
 target_include_directories(BloxHubLoader PRIVATE ${CMAKE_SOURCE_DIR}/include ${CMAKE_SOURCE_DIR}/vendor)
 target_link_libraries(BloxHubLoader PRIVATE pe_bliss)
+
+# BloxHub (Modern Loader) EXE
+add_executable(BloxHub
+    src/BloxHub.cpp
+    vendor/pe/pe.cpp
+)
+target_include_directories(BloxHub PRIVATE ${CMAKE_SOURCE_DIR}/include ${CMAKE_SOURCE_DIR}/vendor)
+target_link_libraries(BloxHub PRIVATE pe_bliss)
