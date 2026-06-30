@@ -12,6 +12,7 @@
 - Modifikasi Import Table berhasil (pe_bliss tidak error)!
 - Sudah coba ganti nama section dan perbaiki checksum — **tetap saja terdeteksi!**  
 **Kesimpulan**: Import Hijacking tidak bisa digunakan untuk melewati Hyperion saat ini!
+**Solusi yang Dipilih**: Pivot ke DLL Proxying! Lihat [Checkpoint Terakhir](../checkpoints/CHECKPOINT_20260701.md) dan [Planning & Roadmap](../docs/PLANNING.md)!
 
 ### 2. Koneksi TCP Gagal (Silent Bridge)
 **Status**: Active  
@@ -23,6 +24,7 @@
 - WSAStartup tidak dipanggil sebelum membuat socket
 - Listener berhenti sebelum menerima koneksi
 - Firewall memblokir koneksi localhost
+**Rencana Perbaikan**: Pindahkan inisialisasi socket ke scheduler hook dan set ke Non-Blocking Mode! Lihat [Checkpoint Terakhir](../checkpoints/CHECKPOINT_20260701.md)!
 
 ### 3. DLL Tidak Berjalan di Roblox
 **Status**: Active  
@@ -35,4 +37,8 @@
 ## Catatan Penting
 - ✅ **BloxHub.exe (Modern Loader Dasar) Sudah Berjalan**: Backup, copy DLL, dan restore bekerja!
 - ❌ **Import Hijack Tidak Bisa Lewati Hyperion**: Ini adalah masalah utama!
-- 📝 **Fokus Sekarang**: Cari cara bypass "Roblox Damaged"!
+- 📝 **Fokus Sekarang**: Pivot ke DLL Proxying!
+- 📌 **Referensi Lainnya**:
+  - [Checkpoint Terakhir](../checkpoints/CHECKPOINT_20260701.md)
+  - [Arsitektur Sistem](../docs/ARCHITECTURE.md)
+  - [Planning & Roadmap](../docs/PLANNING.md)

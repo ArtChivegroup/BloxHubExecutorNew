@@ -11,6 +11,7 @@ Executor Roblox dengan fokus stealth dan keandalan.
 - [Cara Penggunaan](docs/USAGE.md) - Panduan penggunaan
 - [Daftar Bug](docs/BUGS.md) - Bug dan masalah yang sedang terjadi
 - [Planning & Roadmap](docs/PLANNING.md) - Rencana pengembangan
+- [Checkpoints](checkpoints/) - Catatan progres dan milestone (lihat `checkpoints/CHECKPOINT_20260701.md` untuk update terakhir!)
 
 ---
 
@@ -27,11 +28,14 @@ BloxHubExecutorNew/
 │   ├── internal/
 │   │   └── dllmain.cpp
 │   ├── BloxHubInjector.cpp
-│   └── BloxHubLoader.cpp
+│   ├── BloxHubLoader.cpp
+│   └── BloxHub.cpp        # Modern Loader (baru!)
 ├── vendor/
 │   ├── pe_bliss/
 │   └── pe/
-├── docs/                 # Dokumentasi lengkap
+├── docs/                   # Dokumentasi utama (arsitektur, build, bugs, dll.)
+├── checkpoints/            # Catatan progres dan milestone (lihat `checkpoints/CHECKPOINT_20260701.md`!)
+├── EXAMPLE PROJECT/        # Contoh referensi (CFG Bypass, dll.)
 ├── CMakeLists.txt
 └── README.md
 ```
@@ -41,9 +45,10 @@ BloxHubExecutorNew/
 ## Quick Start
 Lihat [Cara Build](docs/BUILD.md) dan [Cara Penggunaan](docs/USAGE.md).
 
+Untuk update progres terakhir, lihat [Checkpoints](checkpoints/CHECKPOINT_20260701.md)!
+
 ---
 
 ## Catatan Penting
-- Testing Notepad dihapus karena tidak relevan
-- BloxHubLoader saat ini menyebabkan "Roblox Damaged"
-- Fokus pengembangan adalah "Silent Bridge" arsitektur
+- Import Hijacking dicabut karena terdeteksi Hyperion! Lihat [Daftar Bug](docs/BUGS.md) dan [Checkpoint Terakhir](checkpoints/CHECKPOINT_20260701.md).
+- Rencana selanjutnya: Pivot ke DLL Proxying! Lihat [Planning & Roadmap](docs/PLANNING.md).

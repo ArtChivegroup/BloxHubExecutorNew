@@ -14,8 +14,8 @@ BloxHub Executor adalah executor untuk Roblox yang dirancang dengan arsitektur *
 - BloxHubClient.exe (TCP Client)
 - BloxHubInternal.dll (Payload)
 
-### Sekarang: Modern Loader (Beralih ke Manual Map)
-**Import Hijacking TERDETEKSI Hyperion!** Jadi kita akan **beralih ke Manual Map Injection dengan CFG Bypass** (lihat `EXAMPLE PROJECT\RBX-cfg-bypass-main`!)
+### Sekarang: Modern Loader (Beralih ke DLL Proxying)
+**Import Hijacking TERDETEKSI Hyperion!** Jadi kita akan **beralih ke DLL Proxying**! (lihat [Checkpoint Terakhir](../checkpoints/CHECKPOINT_20260701.md) dan [Daftar Bug](../docs/BUGS.md)!
 
 ---
 
@@ -24,7 +24,7 @@ BloxHub Executor adalah executor untuk Roblox yang dirancang dengan arsitektur *
 ### 1. BloxHub.exe (Modern Loader)
 **Fungsi**: Gabungan Injector, UI dan TCP Client  
 **Tanggung Jawab**:
-- **Manual Map Inject BloxHubInternal.dll dengan CFG Bypass** (dari example project!)
+- **DLL Proxying Setup** (drop `version.dll` ke folder Roblox, rename asli jadi `version_orig.dll`)
 - **UI untuk memasukkan script Lua**
 - **TCP Client untuk berkomunikasi dengan DLL internal** (Silent Bridge)
 
@@ -43,7 +43,7 @@ BloxHub Executor adalah executor untuk Roblox yang dirancang dengan arsitektur *
 ```
 [BloxHub.exe (Modern Loader)]
     |
-    |-- (Manual Map Injection + CFG Bypass)
+    |-- (DLL Proxying: version.dll)
     ↓
 [BloxHubInternal.dll di Roblox]
     |
@@ -59,8 +59,8 @@ BloxHub Executor adalah executor untuk Roblox yang dirancang dengan arsitektur *
 ---
 
 ## Teknik Evasi Hyperion
-1. **Manual Map Injection**: Tidak menggunakan LoadLibrary, jadi tidak muncul di module list!
-2. **CFG Bypass**: Lihat `EXAMPLE PROJECT\RBX-cfg-bypass-main`!
+1. **DLL Proxying**: Tidak memodifikasi RobloxPlayerBeta.exe sama sekali!
+2. **CFG Bypass**: Lihat `../EXAMPLE PROJECT/RBX-cfg-bypass-main/!
 3. **PE Header Wiping**: DLL menghapus PE header sendiri dari memory saat attach
 4. **Dynamic Port Handshake**: Port TCP Silent Bridge dinamis per sesi
 5. **Scheduler Hooking**: Eksekusi Lua di main thread Roblox (ter-whitelist anti-tamper)
@@ -72,3 +72,10 @@ BloxHub Executor adalah executor untuk Roblox yang dirancang dengan arsitektur *
 - **Build System**: CMake
 - **Library**: pe_bliss (optional, untuk PE parsing), Winsock (TCP)
 - **Target**: Windows 10+ x64
+
+---
+
+## Referensi Lainnya
+- [Checkpoint Terakhir](../checkpoints/CHECKPOINT_20260701.md) - Progres terakhir
+- [Daftar Bug](../docs/BUGS.md) - Bug yang sedang terjadi
+- [Planning & Roadmap](../docs/PLANNING.md) - Rencana pengembangan selanjutnya
