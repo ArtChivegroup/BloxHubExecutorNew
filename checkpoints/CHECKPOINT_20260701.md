@@ -2,6 +2,14 @@
 # Checkpoint 2026-07-01
 
 ---
+
+## Related Documentation
+- **For project overview**: [../README.md](../README.md)
+- **For architecture details**: [../docs/ARCHITECTURE.md](../docs/ARCHITECTURE.md)
+- **For known bugs**: [../docs/BUGS.md](../docs/BUGS.md)
+- **For roadmap & planning**: [../docs/PLANNING.md](../docs/PLANNING.md)
+
+---
 ## 📝 Analisis & Kesimpulan Hari Ini
 1. **Import Hijacking TIDAK BISA!**: RobloxPlayerBeta.exe mengalami **Integrity Check (Hash Verification)** Hyperion yang membandingkan hash file di disk dengan yang diharapkan! Meski PE valid dan checksum diperbaiki, tetap terdeteksi!
 2. **Solusi Alternatif**: Pivot ke **DLL Search Order Hijacking (DLL Proxying)**!

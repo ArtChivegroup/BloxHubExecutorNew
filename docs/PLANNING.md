@@ -1,6 +1,16 @@
 
 # Planning & Roadmap
 
+---
+
+## Related Documentation
+- **For project overview**: [../README.md](../README.md)
+- **For architecture details**: [ARCHITECTURE.md](ARCHITECTURE.md)
+- **For known bugs**: [BUGS.md](BUGS.md)
+- **For progress checkpoints**: [../checkpoints/CHECKPOINT_20260701.md](../checkpoints/CHECKPOINT_20260701.md)
+
+---
+
 ## Evolusi Arsitektur: Modern Loader Integration
 BloxHub akan diadaptasi ke **Modern Loader** yang memisahkan frontend dan backend, serta mengelola payload secara dinamis untuk evasi Hyperion yang lebih baik.
 

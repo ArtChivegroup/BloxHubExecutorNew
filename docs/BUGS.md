@@ -1,6 +1,16 @@
 
 # Daftar Bug & Masalah
 
+---
+
+## Related Documentation
+- **For project overview**: [../README.md](../README.md)
+- **For architecture details**: [ARCHITECTURE.md](ARCHITECTURE.md)
+- **For roadmap & planning**: [PLANNING.md](PLANNING.md)
+- **For progress checkpoints**: [../checkpoints/CHECKPOINT_20260701.md](../checkpoints/CHECKPOINT_20260701.md)
+
+---
+
 ## Bug Aktif
 
 ### 1. Roblox Damaged (Import Hijacking)
