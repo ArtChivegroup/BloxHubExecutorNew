@@ -1,0 +1,10 @@
+^C:\USERS\ADMINISTRATOR\DOWNLOADS\BLOXHUBPROJECT\BLOXHUBDUMPER\BLOXHUB EXECUTOR\BLOXHUB-EXECUTOR-NEW\BUILD\CMAKEFILES\84A8CA6D0BC00DD0417AF670F99CCA3F\GENERATE.STAMP.RULE
+setlocal
+"C:\Program Files\CMake\bin\cmake.exe" "-SC:/Users/Administrator/Downloads/BloxHubProject/BloxhubDumper/BloxHub Executor/BloxHub-Executor-New" "-BC:/Users/Administrator/Downloads/BloxHubProject/BloxhubDumper/BloxHub Executor/BloxHub-Executor-New/build" --check-stamp-list CMakeFiles/generate.stamp.list --vs-solution-file "C:/Users/Administrator/Downloads/BloxHubProject/BloxhubDumper/BloxHub Executor/BloxHub-Executor-New/build/BloxHubExecutor.sln"
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
