@@ -17,14 +17,32 @@
 | Import Hijacking | ❌ Gagal | Terdeteksi Hyperion Integrity Check! |
 
 ---
-## 🛠️ Rencana Selanjutnya (DLL Proxying)
-1. **Fase 1**: Buat DLL Proxy (misal `version.dll`) yang melakukan export forwarding ke `version_orig.dll`!
-2. **Fase 2**: Update BloxHub.exe (Modern Loader) untuk:
-   - Drop DLL Proxy ke folder Roblox
-   - Rename DLL asli ke `_orig.dll`
-   - Restore otomatis ketika selesai!
-3. **Fase 3**: Fix Silent Bridge (TCP Listener) di DLL Proxy!
-4. **Fase 4**: Implementasi CFG Bypass jika perlu!
+## 🛠️ Rencana Selanjutnya (DLL Proxying - Detail)
+
+### 🚀 Fase 1: Buat DLL Proxy (`version.dll`)
+- Buat `src/internal/version_proxy.cpp`
+- Gunakan `#pragma comment(linker, "/export:...")` untuk export forwarding ke `version_orig.dll`
+- Tambahkan PE Header Wiping di `DllMain`
+- Tambahkan WSAStartup di `DllMain`
+- Tambahkan `InitializeBloxHub()` di `DllMain`
+- **Catatan**: Cek daftar export `version.dll` dengan CFF Explorer/PE Bear untuk memastikan semua fungsi di-forward!
+
+### 🚀 Fase 2: Update Modern Loader (`BloxHub.exe`)
+- Hapus logika pe_bliss (tidak perlu memodifikasi PE lagi!)
+- Ubah alur:
+  1. Cari path RobloxPlayerBeta.exe
+  2. Jika `version.dll` sudah ada di folder Roblox → rename jadi `version_orig.dll`
+  3. Copy DLL Proxy kita ke folder Roblox sebagai `version.dll`
+  4. Restore: Hapus `version.dll` kita, rename `version_orig.dll` kembali ke `version.dll`
+
+### 🚀 Fase 3: Fix Silent Bridge di DLL Proxy
+- Pindahkan inisialisasi socket ke scheduler hook (bukan di DllMain!)
+- Set socket ke **Non-Blocking Mode** (`FIONBIO`)
+- Poll socket di scheduler hook setiap frame
+- Jangan gunakan `CreateThread`!
+
+### 🚀 Fase 4: CFG Bypass (Control Flow Guard)
+- Gunakan referensi dari `EXAMPLE PROJECT/RBX-cfg-bypass-main` untuk menandai alamat hook kita sebagai valid call target!
 
 ---
 ## 📌 Catatan Penting
