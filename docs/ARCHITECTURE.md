@@ -29,6 +29,11 @@
                    │
                    ▼
               Hyperion (blokir sideload, tantang inject)
+
+┌──────────────────────┐
+│  BloxHubInjector.exe │  ← jalur uji manual (disarankan)
+│  wait game + inject  │
+└──────────────────────┘
 ```
 
 ---
@@ -46,6 +51,17 @@ Launcher dengan dua mode:
 
 State machine sideload: `PREFLIGHT → INSTALL → LAUNCH → VERIFY → RESTORE`
 
+### `BloxHubInjector.exe` (`src/BloxHubInjector.cpp`)
+
+Injector standalone — **workflow uji disarankan:**
+
+1. Tunggu PID dengan `RobloxPlayerBeta.dll` loaded  
+2. Delay 2 detik  
+3. Panggil `injector::Inject()`  
+4. Cek Roblox masih hidup setelah inject  
+
+Tidak launch Roblox — user buka game dulu.
+
 ### `pe_patcher` (`src/internal/pe_patcher.cpp`)
 
 - Baca `version.dll` (payload) + System32 DLL asli  
@@ -54,10 +70,10 @@ State machine sideload: `PREFLIGHT → INSTALL → LAUNCH → VERIFY → RESTORE
 
 ### `BloxHubInternal.dll` (`src/internal/dllmain.cpp`)
 
-Payload module stomp:
+Payload module stomp (minimal Fase 1):
 
-- `DllMain` — dipanggil injector (console debug Fase 1)  
-- `WriteLog` / marker — sandbox temp Roblox (verify luar belum akurat)  
+- `DllMain` — `AllocConsole` + `WriteConsoleA` (`DebugConsoleLog`)  
+- **Tidak ada** export `BloxHubInit`, **tidak ada** `WriteLog` / marker `%TEMP%` (dihapus untuk isolasi crash)  
 - `offsets.hpp` — siap fase EXECUTE  
 
 ### `stomp_inject.cpp` + `tp_execute.cpp`
@@ -65,10 +81,12 @@ Payload module stomp:
 Digunakan oleh `BloxHub.exe --inject` dan `BloxHubInjector.exe`:
 
 1. `OpenProcess`  
-2. `NtMapViewOfSection` — map `d3d10warp.dll` ke proses Roblox  
+2. `NtCreateSection` + `NtMapViewOfSection` — map `d3d10warp.dll` ke proses Roblox  
 3. Stomp: reloc + imports + write image ke stomp base  
-4. SEH (`RtlAddFunctionTable`) + TLS callbacks via remote shellcode  
-5. `DllMain` via `ZwSetIoCompletion` (fallback `CreateRemoteThread`)  
+4. **Skip TLS + SEH** — CRT TLS dan `RtlAddFunctionTable` dengan alamat injector-local menyebabkan crash  
+5. `DllMain` via **`TpExecuteShellcodeSync`** → `CreateRemoteThread` + `WaitForSingleObject`  
+
+`TpExecuteShellcode` (IoCompletion / `ZwSetIoCompletion`) masih ada untuk shellcode umum; **DllMain tidak memakainya** — async dispatch tidak memberi tahu kalau proses crash.
 
 ### `offsets.hpp` (`include/offsets.hpp`)
 
@@ -80,12 +98,12 @@ Digunakan oleh `BloxHub.exe --inject` dan `BloxHubInjector.exe`:
 ## Alur Inject (Jalur Aktif)
 
 ```
-BloxHub.exe --inject
-  → CreateProcess(RobloxPlayerBeta.exe)
+Roblox in-game
+  → BloxHubInjector.exe (Admin)
   → WaitForRobloxGameProcess (RobloxPlayerBeta.dll loaded)
-  → Map d3d10warp.dll → stomp BloxHubInternal.dll
-  → DllMain via IoCompletion
-  → Console [BloxHub] DllMain PROCESS_ATTACH (target Fase 1)
+  → Map d3d10warp.dll → stomp BloxHubInternal.dll (reloc + import only)
+  → DllMain via CreateRemoteThread sync
+  → [BloxHub] DllMain PROCESS_ATTACH (target Fase 1 — console atau Step 4 file)
 ```
 
 ---
@@ -113,4 +131,5 @@ include/
 
 ## Referensi
 
-Injector stomp diadaptasi dari [`example projects/Roblox-Injector-main`](../example%20projects/Roblox-Injector-main) (user-mode, tanpa driver).
+Injector stomp diadaptasi dari [`example projects/Roblox-Injector-main`](../example%20projects/Roblox-Injector-main) (user-mode, tanpa driver).  
+Perbedaan BloxHub: skip TLS/SEH, DllMain sync thread.

@@ -10,13 +10,52 @@
 - Build Release di `build\bin\Release\`  
 - **CMD/PowerShell as Administrator** (untuk inject)  
 - Path Roblox Bloxstrap **sama versi** dengan `offsets::roblox_version` di `include/offsets.hpp`  
-- Semua artefak (`BloxHub.exe`, `BloxHubInternal.dll`, `version.dll`) di folder yang sama  
+- Artefak inject: `BloxHubInjector.exe` + `BloxHubInternal.dll` di folder yang sama  
 
 ---
 
-## Mode 1 — Inject (Disarankan)
+## Mode 1 — Inject Manual (Disarankan)
 
-Tidak memodifikasi file di folder Roblox.
+Tidak memodifikasi file di folder Roblox. **Roblox harus sudah in-game** sebelum inject.
+
+```cmd
+cd build\bin\Release
+
+REM 1. Buka Roblox, masuk game
+REM 2. CMD as Administrator:
+BloxHubInjector.exe
+```
+
+### Alur yang diharapkan
+
+```text
+[*] Mode: tunggu RobloxPlayerBeta.dll loaded, lalu stomp inject
+[*] Waiting for game process (RobloxPlayerBeta.dll)...
+[+] Game process ready (PID: ...)
+[*] Tunggu 2 detik sebelum inject...
+[*] DLL: ...\BloxHubInternal.dll
+[*] Injecting...
+[*] Stomp module mapped at ... (C:\Windows\System32\d3d10warp.dll)
+[*] RobloxPlayerBeta.dll base: ...
+[*] Payload written to stomp region (... bytes)
+[*] Calling DllMain at ... (sync thread)
+[*] CreateRemoteThread OK
+[+] DllMain returned
+[+] Injection OK — Roblox masih hidup
+[*] Cari console: [BloxHub] DllMain PROCESS_ATTACH
+```
+
+### Cek bukti inject (Fase 1)
+
+- Console di proses Roblox (bisa di belakang window game): `[BloxHub] DllMain PROCESS_ATTACH`
+- Terminal: `DllMain returned` + `Roblox masih hidup`
+- Kalau tidak ada console → lihat TODO Step 4 (`C:\BloxHub\test.txt`)
+
+---
+
+## Mode 2 — Inject via Launcher
+
+Launch Roblox + inject otomatis. Timing bisa lebih riskan daripada manual.
 
 ```cmd
 cd build\bin\Release
@@ -35,32 +74,18 @@ BloxHub.exe "C:\...\version-5cf2272675e145f5\RobloxPlayerBeta.exe" --inject
 ```text
 [PREFLIGHT] OK
 [LAUNCH] Roblox launched (PID: ...)
-[+] Roblox game process ready (PID: ...)   ← bisa sama atau beda dari launch PID
+[+] Roblox game process ready (PID: ...)
 [*] Stomp module mapped at: ...
-[*] RobloxPlayerBeta.dll base: ...
 [*] Payload written to stomp region
-[*] Calling DllMain at: ...
-[+] DllMain dispatched
+[*] CreateRemoteThread OK
+[+] DllMain returned
 [INJECT] OK
 [VERIFY] ...                    ← masih sering timeout sampai Step 6
 ```
 
-### Cek bukti inject (Fase 1)
-
-- Console di proses Roblox: `[BloxHub] DllMain PROCESS_ATTACH`
-- Terminal: `DllMain dispatched`, `ZwSetIoCompletion OK`
-
-### Alternatif: injector standalone
-
-Roblox sudah terbuka dulu:
-
-```cmd
-BloxHubInjector.exe
-```
-
 ---
 
-## Mode 2 — Sideload (Eksperimen / Hampir Pasti Gagal)
+## Mode 3 — Sideload (Eksperimen / Hampir Pasti Gagal)
 
 ```cmd
 BloxHub.exe "C:\...\version-xxxxxxxx\RobloxPlayerBeta.exe"
@@ -99,29 +124,31 @@ Hyperion menolak proxy sebelum `DllMain` jalan. Gejala:
    ```cmd
    copy /Y offsets\raw\offsets.h include\offsets.hpp
    ```
-3. Rebuild — tidak perlu `CfgBypass` (lihat `BUILD.md`)
-4. Rebuild:
+3. Rebuild:
    ```cmd
    cmake --build build --config Release
    ```
-5. Update path Bloxstrap ke versi baru
+4. Update path Bloxstrap ke versi baru
 
 ---
 
 ## Troubleshooting
 
-### `Injection failed` / `OpenProcess` error 87
+### `Injection failed` / `OpenProcess` error
 
-**Sudah diperbaiki sebagian:** loader menunggu proses game dengan `RobloxPlayerBeta.dll`.  
-Kalau masih gagal: jalankan **as Administrator**.
+Jalankan **as Administrator**. Pastikan Roblox sudah in-game (`RobloxPlayerBeta.dll` loaded).
 
-### Inject "OK" tapi verify timeout, tidak ada log
+### Inject OK, Roblox crash
 
-Lihat [`STATUS.md`](STATUS.md) — hipotesis utama:
+Rebuild terbaru — TLS/SEH harus di-skip di `stomp_inject.cpp`. Cek log tidak ada error sebelum `DllMain returned`.
 
-- Log ditulis ke temp sandbox Roblox, bukan `%TEMP%` user  
-- DllMain crash di dalam proses  
-- CFG scan salah target  
+### Inject OK, tidak crash, tidak ada console
+
+`DllMain` mungkin sudah jalan — console bisa tersembunyi. Lihat [`TODO.md`](TODO.md) Step 4 untuk bukti file.
+
+### Inject "OK" tapi verify timeout
+
+Expected sampai Step 6 — verify masih cek `%TEMP%` user, bukan sandbox Roblox.
 
 ### Versi mismatch
 
@@ -147,7 +174,7 @@ del "C:\...\version-xxx\dxgi_orig.dll"
 
 ### `BloxHubInternal.dll not found`
 
-Build ulang, pastikan DLL ada di folder yang sama dengan `BloxHub.exe`.
+Build ulang, pastikan DLL ada di folder yang sama dengan injector.
 
 ---
 
@@ -157,6 +184,6 @@ Build ulang, pastikan DLL ada di folder yang sama dengan `BloxHub.exe`.
 |--------|------|------|
 | Folder Roblox | `dxgi.dll`, `dxgi_orig.dll` | Sideload install |
 | Folder Roblox | `bloxhub_loaded.txt` | Payload sideload (jika jalan) |
-| `%TEMP%` user | `bloxhub_test.txt` | Payload log |
-| `%TEMP%` user | `bloxhub_payload_loaded.txt` | Marker verify |
+| `C:\BloxHub\` | `test.txt` | Payload Step 4+ (belum diimplementasi) |
+| `%TEMP%` user | `bloxhub_test.txt` | Legacy — tidak dipakai payload saat ini |
 | Folder `BloxHub.exe` | `bloxhub_session.dat` | Session sideload |

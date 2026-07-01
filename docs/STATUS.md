@@ -14,11 +14,12 @@ Dokumen ini adalah **satu sumber kebenaran** untuk kondisi proyek sekarang. Kala
 |------------|-----------------|
 | Apa tujuan proyek ini? | Riset loader Windows untuk menjalankan payload di Roblox |
 | Apa yang **tidak** jalan? | **Sideload `dxgi.dll`** — diblokir Hyperion sebelum `DllMain` |
-| Apa yang dicoba sekarang? | **Module stomp inject** (`--inject`, Riviera-style) |
-| Apakah inject sudah terbukti jalan? | **Belum terkonfirmasi** — uji: console `[BloxHub] DllMain PROCESS_ATTACH` di Roblox |
+| Apa yang dicoba sekarang? | **Module stomp inject** (Riviera-style, user-mode) |
+| Apakah inject sudah terbukti jalan? | **Sebagian** — 2× manual inject tidak crash, `DllMain returned`; console di layar belum dikonfirmasi |
+| Cara uji yang disarankan? | **`BloxHubInjector.exe`** — Roblox in-game dulu, lalu inject as Admin |
 | Versi Roblox harus cocok? | **Ya** — path Bloxstrap harus sama dengan `offsets::roblox_version` |
 | Build di mana? | `build\bin\Release\` |
-| Perlu Admin? | **Ya** untuk mode `--inject` |
+| Perlu Admin? | **Ya** untuk inject |
 
 ---
 
@@ -41,17 +42,23 @@ Roblox menolak proxy (`failed to load dxgi.dll`). `DllMain` tidak pernah jalan. 
 
 ### Jalur B — Module Stomp Inject (yang dipakai sekarang)
 
+**Manual (disarankan):**
+```
+Roblox in-game → BloxHubInjector.exe
+```
+
+**Via launcher:**
 ```
 BloxHub.exe <path_roblox> --inject
 ```
 
-1. Launch Roblox  
-2. Tunggu `RobloxPlayerBeta.dll` loaded  
-3. Map `d3d10warp.dll` ke proses → stomp dengan `BloxHubInternal.dll`  
-4. Manual map lengkap (reloc, import, SEH, TLS) + **DllMain** via IoCompletion  
-5. Bukti Fase 1: console di Roblox (bukan verify `%TEMP%` dulu)  
+1. Tunggu proses game dengan `RobloxPlayerBeta.dll` loaded  
+2. Map `d3d10warp.dll` ke proses → stomp dengan `BloxHubInternal.dll`  
+3. Manual map: reloc + import (TLS/SEH **di-skip** — fix crash)  
+4. **DllMain** via `CreateRemoteThread` sync + wait  
+5. Bukti Fase 1: console di Roblox atau file absolut (Step 4)
 
-**Status:** ⚠️ **Injector baru — menunggu uji**  
+**Status:** ✅ **Inject stabil** (tidak crash) — 🔄 **console belum dikonfirmasi**  
 Injector lama (VirtualAlloc + CFG scan + `BloxHubInit`) diganti Juli 2026.
 
 ---
@@ -61,9 +68,9 @@ Injector lama (VirtualAlloc + CFG scan + `BloxHubInit`) diganti Juli 2026.
 | File | Fungsi |
 |------|--------|
 | `BloxHub.exe` | Launcher utama — sideload **atau** `--inject` |
+| `BloxHubInjector.exe` | **Injector manual** — tunggu Roblox in-game, lalu stomp inject |
 | `version.dll` | Source payload untuk `pe_patcher` (jadi proxy `dxgi.dll`) |
-| `BloxHubInternal.dll` | Payload untuk manual map inject |
-| `BloxHubInjector.exe` | Injector standalone |
+| `BloxHubInternal.dll` | Payload untuk module stomp inject |
 | `include/offsets.hpp` | Offset game Roblox (dari `offsets/raw/`) |
 
 **Penting:** `version.dll` dipakai sideload. `BloxHubInternal.dll` dipakai inject. Jangan tertukar.
@@ -82,12 +89,18 @@ PREFLIGHT → INSTALL → LAUNCH → VERIFY → [Enter] → RESTORE
 
 ## Mode Inject (Tanpa Modifikasi Folder Roblox)
 
+**BloxHubInjector (manual):**
+```
+WAIT GAME PID → DELAY 2s → INJECT → cek Roblox masih hidup
+```
+
+**BloxHub.exe --inject:**
 ```
 PREFLIGHT → LAUNCH → WAIT GAME PID → INJECT → VERIFY
 ```
 
 - Tidak ada INSTALL/RESTORE file Roblox
-- Verify cek `%TEMP%\bloxhub_payload_loaded.txt` dan `bloxhub_test.txt`
+- Verify cek `%TEMP%\bloxhub_payload_loaded.txt` — **masih broken** sampai Step 6
 
 ---
 
@@ -97,10 +110,22 @@ PREFLIGHT → LAUNCH → WAIT GAME PID → INJECT → VERIFY
 
 - VirtualAlloc + CFG scan → false positive `0x800000`  
 - `BloxHubInit` thread OK, payload tidak terbukti hidup  
+- Roblox crash setelah inject stomp pertama (TLS/SEH)
 
-### Inject stomp (saat ini)
+### Inject stomp (Juli 2026 — setelah fix)
 
-- **Belum diuji** setelah migrasi — lihat [`TODO.md`](TODO.md) Step 1  
+**Test:** `BloxHubInjector.exe` × 2, PID 9392, Roblox in-game, Admin
+
+| Cek | Hasil |
+|-----|--------|
+| Stomp map | ✅ `d3d10warp.dll` mapped |
+| Payload write | ✅ ~28 KB |
+| DllMain | ✅ `DllMain returned` |
+| Roblox crash | ✅ **tidak** (2×) |
+| Console `[BloxHub] DllMain PROCESS_ATTACH` | ❓ belum dikonfirmasi user |
+| Log injector | `CreateRemoteThread OK`, `Injection OK — Roblox masih hidup` |
+
+**Fix yang membuat stabil:** skip TLS + SEH; DllMain via sync `CreateRemoteThread` (bukan IoCompletion async).
 
 ### Verify `%TEMP%`
 
@@ -130,13 +155,29 @@ PREFLIGHT → LAUNCH → WAIT GAME PID → INJECT → VERIFY
 ```cmd
 cd build\bin\Release
 
-REM Wajib: CMD as Administrator
-BloxHub.exe "C:\Users\Administrator\AppData\Local\Bloxstrap\Versions\version-5cf2272675e145f5" --inject
+REM 1. Buka Roblox, masuk game
+REM 2. CMD as Administrator:
+BloxHubInjector.exe
+```
+
+Log sukses minimal:
+```text
+[+] Game process ready (PID: ...)
+[*] Stomp module mapped at ...
+[*] Payload written to stomp region
+[*] CreateRemoteThread OK
+[+] DllMain returned
+[+] Injection OK — Roblox masih hidup
 ```
 
 Cek bukti Fase 1:
 - Console di Roblox: `[BloxHub] DllMain PROCESS_ATTACH`
-- Log terminal: `Stomp module mapped`, `DllMain dispatched`
+- Kalau tidak ada console → lanjut TODO Step 4 (`C:\BloxHub\test.txt`)
+
+Alternatif (timing lebih riskan):
+```cmd
+BloxHub.exe "C:\Users\Administrator\AppData\Local\Bloxstrap\Versions\version-5cf2272675e145f5" --inject
+```
 
 ---
 
@@ -157,6 +198,6 @@ Cek bukti Fase 1:
 
 1. Baca dokumen ini lagi (5 menit)  
 2. Pastikan versi Roblox = versi di `offsets.hpp`  
-3. Jalankan `--inject` as Admin — cari **console di Roblox**, bukan hanya log terminal
+3. Jalankan `BloxHubInjector.exe` as Admin (Roblox in-game) — cek console **atau** lanjut Step 4
 
 Jangan utak-atik sideload dulu — itu jalur mati untuk Roblox saat ini.

@@ -14,4 +14,4 @@
 | [BUGS.md](BUGS.md) | Masalah terbuka |
 | [PLANNING.md](PLANNING.md) | Prioritas saat lanjut kerja |
 
-Checkpoint aktif: [`../checkpoints/CHECKPOINT_CURRENT.md`](../checkpoints/CHECKPOINT_CURRENT.md) (Checkpoint 01)
+Checkpoint aktif: [`../checkpoints/CHECKPOINT_CURRENT.md`](../checkpoints/CHECKPOINT_CURRENT.md) — inject stabil, Step 1 partial

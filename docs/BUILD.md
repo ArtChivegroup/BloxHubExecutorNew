@@ -51,7 +51,8 @@ cmake --build build --config Release
 Rebuild satu target:
 
 ```cmd
-cmake --build build --config Release --target BloxHub
+cmake --build build --config Release --target BloxHubInternal
+cmake --build build --config Release --target BloxHubInjector
 ```
 
 ---
@@ -84,7 +85,8 @@ Versi aktif saat ini: `version-5cf2272675e145f5` (lihat baris `roblox_version` d
 ## Catatan
 
 - **Build sukses ≠ inject sukses** di Roblox  
-- Test runtime butuh Admin + versi Roblox yang cocok  
+- Test runtime: **Admin** + Roblox **in-game** + `BloxHubInjector.exe`  
+- Inject stabil (Juli 2026): skip TLS/SEH, DllMain via sync `CreateRemoteThread`  
 - Lihat [`STATUS.md`](STATUS.md) untuk interpretasi hasil uji  
 
 ---

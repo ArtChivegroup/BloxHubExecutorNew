@@ -1,6 +1,6 @@
 # BloxHub Executor
 
-Windows x64 loader research project for Roblox (Bloxstrap). Primary path: **manual map inject** (`--inject`). Sideload via `dxgi.dll` proxy is blocked by Hyperion on current Roblox builds.
+Windows x64 loader research project for Roblox (Bloxstrap). Primary path: **module stomp inject** via `BloxHubInjector.exe`. Sideload via `dxgi.dll` proxy is blocked by Hyperion on current Roblox builds.
 
 **Start here:** [`docs/STATUS.md`](docs/STATUS.md)
 
@@ -13,11 +13,14 @@ cmake -S . -B build
 cmake --build build --config Release
 cd build\bin\Release
 
-REM Run as Administrator
-BloxHub.exe "C:\Users\Administrator\AppData\Local\Bloxstrap\Versions\version-5cf2272675e145f5" --inject
+REM 1. Open Roblox, join a game
+REM 2. Run as Administrator:
+BloxHubInjector.exe
 ```
 
 Roblox version must match `include/offsets.hpp` (`offsets::roblox_version`).
+
+Expected: `DllMain returned`, `Injection OK — Roblox masih hidup`, no crash.
 
 ---
 
@@ -47,8 +50,8 @@ BloxHubExecutorNew/
 | Target | Output | Role |
 |--------|--------|------|
 | `BloxHub` | `BloxHub.exe` | Launcher: sideload or `--inject` |
-| `BloxHubInjector` | `BloxHubInjector.exe` | Inject into running Roblox |
-| `BloxHubInternal` | `BloxHubInternal.dll` | Manual map payload |
+| `BloxHubInjector` | `BloxHubInjector.exe` | **Manual inject** (recommended test path) |
+| `BloxHubInternal` | `BloxHubInternal.dll` | Stomp payload |
 | `proxy_payload` | `version.dll` | Sideload proxy source |
 
 ---
@@ -71,9 +74,11 @@ BloxHubExecutorNew/
 
 | Item | Status |
 |------|--------|
-| `--inject` infrastructure | Module stomp + IoCompletion |
-| Payload verification | Pending Step 1 test (console) |
-| Sideload `dxgi.dll` | Blocked by Hyperion |
+| Module stomp inject | ✅ stable (2× no crash, `DllMain returned`) |
+| Console proof (Step 1) | 🔄 not confirmed on screen |
+| `BloxHubInjector.exe` manual | ✅ recommended workflow |
+| `BloxHub.exe --inject` | ⏸ use manual inject first |
+| Sideload `dxgi.dll` | ❌ blocked by Hyperion |
 | Offsets | `version-5cf2272675e145f5` |
 
 Details: [`docs/STATUS.md`](docs/STATUS.md)

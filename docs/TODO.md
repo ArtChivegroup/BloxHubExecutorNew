@@ -21,7 +21,7 @@ MASUK ROBLOX ──→ KOMUNIKASI ──→ EXECUTE
 | KOMUNIKASI | 4–6 | Buktikan loader ↔ payload bisa saling baca sinyal |
 | EXECUTE | 7–8 | Baca/tulis memory game di dalam Roblox |
 
-**Progress saat ini:** Migrasi injector stomp selesai — Step 1 siap uji inject.
+**Progress saat ini:** Inject manual stabil (2× tidak crash, `DllMain returned`) — Step 1 menunggu konfirmasi console di layar.
 
 ---
 
@@ -29,15 +29,17 @@ MASUK ROBLOX ──→ KOMUNIKASI ──→ EXECUTE
 
 ### Step 1 — Console di DllMain (injector stomp)
 
-**Apa:** Injector baru (`stomp_inject.cpp`) memanggil **DllMain**. `DebugConsoleLog` di `DLL_PROCESS_ATTACH` print `"[BloxHub] DllMain PROCESS_ATTACH"`. Rebuild full Release, inject.
+**Apa:** Injector stomp (`stomp_inject.cpp`) memanggil **DllMain**. `DebugConsoleLog` di `DLL_PROCESS_ATTACH` print `"[BloxHub] DllMain PROCESS_ATTACH"`. Rebuild full Release, inject.
 
-**Injector:** module stomp `d3d10warp.dll` + manual map lengkap + IoCompletion (`ZwSetIoCompletion`, fallback `CreateRemoteThread`). **Tanpa** CFG bypass.
+**Injector:** module stomp `d3d10warp.dll` + manual map (reloc, import) — **TLS/SEH sengaja di-skip** (crash). DllMain via **`CreateRemoteThread` sync** + wait (`TpExecuteShellcodeSync`). **Tanpa** CFG bypass.
 
-**Sukses:** Console hitam di Roblox dengan teks `DllMain PROCESS_ATTACH`.
+**Cara uji (disarankan):** Roblox sudah in-game → `BloxHubInjector.exe` as Admin (bukan `BloxHub.exe --inject` dulu — timing lebih aman).
 
-**Gagal:** Tidak ada console → debug log injector (stomp base, DllMain dispatched, IoCompletion).
+**Sukses:** Console hitam di Roblox dengan teks `DllMain PROCESS_ATTACH` **atau** minimal Roblox tidak crash + log injector `DllMain returned`.
 
-**File:** `src/internal/dllmain.cpp`, `src/injector/stomp_inject.cpp`
+**Gagal:** Roblox crash setelah inject → cek build terbaru (TLS/SEH harus skip). Tidak ada console tapi tidak crash → lanjut Step 4 (file absolut) sebagai bukti alternatif.
+
+**File:** `src/internal/dllmain.cpp`, `src/injector/stomp_inject.cpp`, `src/injector/tp_execute.cpp`
 
 **Status:** 🔄 inject stabil (2× tidak crash, DllMain returned) — konfirmasi console di layar?
 
@@ -127,9 +129,11 @@ CFG bypass dihapus. Injector diganti module stomp (Riviera-style).
 
 | Gejala | Kemungkinan |
 |--------|-------------|
-| Inject OK, tidak ada console/file | IoCompletion gagal; stomp gagal; crash di DllMain |
-| File di `%TEMP%` tidak ketemu dari luar | `GetTempPath()` di dalam Roblox ≠ `%TEMP%` user |
-| IoCompletion not found | Fallback `CreateRemoteThread` harus jalan — cek log |
+| Inject OK, Roblox crash | TLS/SEH aktif — harus skip; atau payload terlalu berat di DllMain |
+| Inject OK, tidak crash, tidak ada console | `AllocConsole` gagal/tersembunyi di belakang Roblox — coba Step 4 (`C:\BloxHub\test.txt`) |
+| File di `%TEMP%` tidak ketemu dari luar | `GetTempPath()` di dalam Roblox ≠ `%TEMP%` user — expected sampai Step 6 |
+| Log `CreateRemoteThread OK` | Normal — DllMain memang pakai sync thread, bukan IoCompletion |
+| Inject ke-2 di PID sama | Bisa jalan (base stomp beda); idealnya sekali per sesi Roblox |
 
 **Build cepat (hanya payload):**
 ```cmd

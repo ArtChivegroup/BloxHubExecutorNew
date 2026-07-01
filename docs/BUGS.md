@@ -5,15 +5,20 @@
 
 ---
 
-## Kritis — Hambat Inject
+## Kritis — Hambat Fase 1
 
-### B1. Payload belum terbukti hidup (Fase 1)
+### B1. Console belum dikonfirmasi (Step 1 partial)
 
-**Status:** `active` — blocker utama  
+**Status:** `partial` — inject stabil, bukti visual pending  
 
-**Gejala:** Injector lama lapor OK tanpa console/log; verify timeout.
+**Yang sudah OK (Juli 2026):**
+- `BloxHubInjector.exe` × 2 — tidak crash  
+- Log: `DllMain returned`, `Injection OK — Roblox masih hidup`  
 
-**Setelah migrasi stomp:** Uji Step 1 di [`TODO.md`](TODO.md) — console `DllMain PROCESS_ATTACH` di Roblox.
+**Yang belum:**
+- User belum konfirmasi console `[BloxHub] DllMain PROCESS_ATTACH` terlihat di layar  
+
+**Langkah:** Konfirmasi console **atau** lanjut Step 4 (`C:\BloxHub\test.txt`) sebagai bukti file.
 
 **Verify `%TEMP%`:** Masih broken by design sampai Step 4–6 (path absolut).
 
@@ -29,7 +34,7 @@
 
 ### B3. Verify path sandbox
 
-`WriteLog` di Roblox pakai `GetTempPath()` ≠ `%TEMP%` user loader.
+`WriteLog` di Roblox (jika diaktifkan lagi) pakai `GetTempPath()` ≠ `%TEMP%` user loader.
 
 **Fix:** TODO Step 4–6 (`C:\BloxHub\test.txt`).
 
@@ -43,12 +48,20 @@ Cleanup sideload butuh Enter; session file terbatas.
 
 ---
 
+### B5. `BloxHub.exe --inject` timing
+
+Launch + inject bisa terlalu cepat vs manual inject. Pakai `BloxHubInjector.exe` sampai timing launcher diperbaiki.
+
+---
+
 ## Mitigated (Juli 2026)
 
 | Masalah | Fix |
 |---------|-----|
+| Roblox crash setelah stomp inject | Skip TLS + SEH di `stomp_inject.cpp` |
+| DllMain async / crash tidak terdeteksi | `TpExecuteShellcodeSync` — wait thread |
 | CFG auto-scan false positive | Injector diganti module stomp — CFG dihapus |
-| Manual map skip DllMain | Stomp injector panggil DllMain lengkap |
+| Manual map skip DllMain | Stomp injector panggil DllMain |
 | `BloxHubInit` only entry | Dihapus — DllMain saja |
 | Inject ke PID stub | `WaitForRobloxGameProcess()` |
 
@@ -58,7 +71,9 @@ Cleanup sideload butuh Enter; session file terbatas.
 
 | Gejala | Interpretasi |
 |--------|--------------|
-| Tidak ada console di Roblox | DllMain tidak jalan / crash / IoCompletion gagal |
-| `[INJECT] OK`, no console | Thread dispatch ≠ payload hidup — cek log stomp |
-| Verify timeout | Expected sampai Step 6 |
-| `Stomp target too small` | Payload > d3d10warp — coba mshtml.dll |
+| `DllMain returned` + Roblox hidup | Payload hidup — Step 1 hampir selesai |
+| Tidak ada console, tidak crash | `AllocConsole` tersembunyi/gagal — coba Step 4 |
+| Roblox crash setelah inject | TLS/SEH mungkin aktif lagi — cek build |
+| `[INJECT] OK`, verify timeout | Expected sampai Step 6 |
+| `Stomp target too small` | Payload > d3d10warp — coba modul System32 lain |
+| Inject ke-2 same PID | Bisa jalan; ideal sekali per sesi |
