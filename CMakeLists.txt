@@ -52,11 +52,17 @@ add_library(pe_bliss STATIC
 )
 target_include_directories(pe_bliss PUBLIC ${CMAKE_SOURCE_DIR}/vendor/pe_bliss)
 
-# BloxHubInternal DLL
+# BloxHubInternal DLL (legacy, for manual map testing)
 add_library(BloxHubInternal SHARED
     src/internal/dllmain.cpp
 )
 target_include_directories(BloxHubInternal PRIVATE ${CMAKE_SOURCE_DIR}/include)
+
+# dxgi.dll (Proxy DLL for Roblox)
+add_library(dxgi SHARED
+    src/internal/dxgi_proxy.cpp
+)
+target_include_directories(dxgi PRIVATE ${CMAKE_SOURCE_DIR}/include)
 
 # BloxHubInjector EXE
 add_executable(BloxHubInjector
@@ -66,7 +72,7 @@ add_executable(BloxHubInjector
 target_include_directories(BloxHubInjector PRIVATE ${CMAKE_SOURCE_DIR}/include)
 target_link_libraries(BloxHubInjector PRIVATE user32 kernel32)
 
-# BloxHubLoader EXE
+# BloxHubLoader EXE (legacy, import hijack)
 add_executable(BloxHubLoader
     src/BloxHubLoader.cpp
     vendor/pe/pe.cpp
@@ -77,7 +83,14 @@ target_link_libraries(BloxHubLoader PRIVATE pe_bliss)
 # BloxHub (Modern Loader) EXE
 add_executable(BloxHub
     src/BloxHub.cpp
-    vendor/pe/pe.cpp
+    src/internal/pe_patcher.cpp
 )
-target_include_directories(BloxHub PRIVATE ${CMAKE_SOURCE_DIR}/include ${CMAKE_SOURCE_DIR}/vendor)
-target_link_libraries(BloxHub PRIVATE pe_bliss)
+target_include_directories(BloxHub PRIVATE ${CMAKE_SOURCE_DIR}/include)
+target_link_libraries(BloxHub PRIVATE user32 kernel32 shlwapi)
+
+# TestProxy EXE (for testing winmm.dll proxy)
+add_executable(TestProxy
+    src/TestProxy.cpp
+)
+target_include_directories(TestProxy PRIVATE ${CMAKE_SOURCE_DIR}/include)
+target_link_libraries(TestProxy PRIVATE user32 kernel32)

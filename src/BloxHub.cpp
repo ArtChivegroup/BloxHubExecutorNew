@@ -1,31 +1,27 @@
-
-#include <Windows.h>
 #include <iostream>
 #include <filesystem>
-#include <array>
-#include <string>
-#include <random>
-#include "pe/pe.hpp"
+#include <Windows.h>
+#include <Shlwapi.h>
+#include "internal/pe_patcher.h"
 
-// Generate random DLL name (like system DLL)
-std::string GenerateRandomDllName()
+namespace fs = std::filesystem;
+
+BOOL WriteFileToDiskW(LPCWSTR pszFileName, const BYTE* pbDataBuffer, DWORD dwDataLength)
 {
-    const std::array<std::string, 5> prefixes = {
-        "msvcp140_", "vcruntime140_", "winmm_", "d3d11_", "dxgi_"
-    };
-    std::random_device rd;
-    std::mt19937 gen(rd());
-    std::uniform_int_distribution<> prefix_dist(0, prefixes.size() - 1);
-    std::uniform_int_distribution<> num_dist(1000, 9999);
-    return prefixes[prefix_dist(gen)] + std::to_string(num_dist(gen)) + ".dll";
+    HANDLE hFile = CreateFileW(pszFileName, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+    if (hFile == INVALID_HANDLE_VALUE) return FALSE;
+    DWORD dwWritten = 0;
+    WriteFile(hFile, pbDataBuffer, dwDataLength, &dwWritten, NULL);
+    CloseHandle(hFile);
+    return (dwWritten == dwDataLength);
 }
 
 int main(int argc, char* argv[])
 {
-    std::cout << "BloxHub Modern Loader\n";
-    std::cout << "------------------------\n\n";
+    std::cout << "BloxHub Modern Loader (dxgi.dll Proxy)\n";
+    std::cout << "--------------------------------------\n\n";
 
-    std::filesystem::path roblox_exe;
+    fs::path roblox_exe;
 
     if (argc > 1)
     {
@@ -39,17 +35,16 @@ int main(int argc, char* argv[])
         roblox_exe = input;
     }
 
-    // If user gave a directory, auto-add RobloxPlayerBeta.exe
-    if (std::filesystem::is_directory(roblox_exe))
+    if (fs::is_directory(roblox_exe))
     {
         auto exe_in_folder = roblox_exe / "RobloxPlayerBeta.exe";
-        if (std::filesystem::exists(exe_in_folder))
+        if (fs::exists(exe_in_folder))
         {
             roblox_exe = exe_in_folder;
         }
     }
 
-    if (!std::filesystem::exists(roblox_exe))
+    if (!fs::exists(roblox_exe))
     {
         std::cerr << "[!] RobloxPlayerBeta.exe not found at: " << roblox_exe << "\n";
         std::cout << "[*] Press Enter to exit...\n";
@@ -58,79 +53,155 @@ int main(int argc, char* argv[])
     }
 
     auto roblox_dir = roblox_exe.parent_path();
-    std::cout << "[*] Using Roblox directory: " << roblox_dir << "\n";
+    std::wcout << L"[*] Using Roblox directory: " << roblox_dir.wstring() << L"\n";
 
-    // Generate random DLL name
-    auto fake_dll_name = GenerateRandomDllName();
-    std::cout << "[*] Generated fake DLL name: " << fake_dll_name << "\n";
-
-    // Get our own executable path to find BloxHubInternal.dll
-    char exe_path[MAX_PATH];
-    GetModuleFileNameA(NULL, exe_path, MAX_PATH);
-    std::filesystem::path our_exe = exe_path;
+    wchar_t exe_path[MAX_PATH];
+    GetModuleFileNameW(NULL, exe_path, MAX_PATH);
+    fs::path our_exe = exe_path;
     auto our_dir = our_exe.parent_path();
-    auto internal_dll = our_dir / "BloxHubInternal.dll";
-    if (!std::filesystem::exists(internal_dll))
+    auto payload_dll = our_dir / "dxgi.dll";
+
+    if (!fs::exists(payload_dll))
     {
-        std::cerr << "[!] BloxHubInternal.dll not found in current directory!\n";
+        std::cerr << "[!] dxgi.dll (payload) not found in current directory!\n";
         std::cout << "[*] Press Enter to exit...\n";
         std::cin.get();
         return 1;
     }
-    std::cout << "[*] Found BloxHubInternal.dll: " << internal_dll << "\n";
+    std::wcout << L"[*] Found dxgi.dll (payload): " << payload_dll.wstring() << L"\n";
 
-    // Copy DLL to Roblox directory
-    auto fake_dll_path = roblox_dir / fake_dll_name;
+    const wchar_t* windir = _wgetenv(L"WINDIR");
+    if (!windir)
+    {
+        std::cerr << "[!] WINDIR is not available.\n";
+        return 1;
+    }
 
-    // Check if backup exists, restore first
-    auto backup_exe = roblox_dir / "RobloxPlayerBeta.exe.backup";
+    auto system_dxgi = fs::path(windir) / "System32" / "dxgi.dll";
+    auto roblox_dxgi_dll = roblox_dir / "dxgi.dll";
+    auto roblox_dxgi_orig_dll = roblox_dir / "dxgi_orig.dll";
 
     try
     {
-        if (std::filesystem::exists(backup_exe))
+        if (fs::exists(roblox_dxgi_orig_dll))
         {
-            std::cout << "[*] Restoring original RobloxPlayerBeta.exe from backup...\n";
-            std::filesystem::copy_file(backup_exe, roblox_exe, std::filesystem::copy_options::overwrite_existing);
+            std::cout << "[*] Proxy already installed, skipping copy...\n";
         }
         else
         {
-            std::cout << "[*] Creating backup of RobloxPlayerBeta.exe...\n";
-            std::filesystem::copy_file(roblox_exe, backup_exe);
+            std::cout << "[*] Copying System32 dxgi.dll to dxgi_orig.dll...\n";
+            fs::copy_file(system_dxgi, roblox_dxgi_orig_dll, fs::copy_options::overwrite_existing);
+
+            std::cout << "[*] Generating dynamic proxy DLL...\n";
+            PBYTE pProxyBuffer = NULL;
+            DWORD dwProxySize = 0;
+            if (!ConvertPayloadToProxy(
+                payload_dll.wstring().c_str(),
+                system_dxgi.wstring().c_str(),
+                L"dxgi_orig.dll",
+                &pProxyBuffer,
+                &dwProxySize
+            ))
+            {
+                std::cerr << "[!] Failed to generate proxy DLL!\n";
+                return 1;
+            }
+
+            std::wcout << L"[*] Writing proxy dxgi.dll to Roblox directory...\n";
+            if (!WriteFileToDiskW(roblox_dxgi_dll.wstring().c_str(), pProxyBuffer, dwProxySize))
+            {
+                std::cerr << "[!] Failed to write proxy DLL!\n";
+                HeapFree(GetProcessHeap(), 0, pProxyBuffer);
+                return 1;
+            }
+            HeapFree(GetProcessHeap(), 0, pProxyBuffer);
         }
 
-        // Copy our DLL
-        std::cout << "[*] Copying BloxHubInternal.dll to Roblox directory as " << fake_dll_name << "...\n";
-        std::filesystem::copy_file(internal_dll, fake_dll_path, std::filesystem::copy_options::overwrite_existing);
-
-        // Import hijack
-        std::cout << "[*] Modifying Import Table...\n";
-        pe::pe_t pe(roblox_exe);
-        pe.import_dll(fake_dll_name, std::to_array<std::string>({"BloxHubInit"}));
-        std::cout << "[+] Success!\n";
-    }
-    catch (const std::exception& e)
-    {
-        std::cerr << "[!] Error: " << e.what() << "\n";
-        std::cout << "[*] Press Enter to exit...\n";
+        std::cout << "\n[+] Success! DLL proxy installed.\n";
+        std::cout << "[*] Launching Roblox automatically in 3 seconds...\n";
+        
+        // Countdown 3 detik
+        for (int i = 3; i > 0; i--) {
+            std::cout << "[*] " << i << "...\n";
+            Sleep(1000);
+        }
+        
+        // Buka Roblox secara otomatis
+        STARTUPINFOW si;
+        PROCESS_INFORMATION pi;
+        ZeroMemory(&si, sizeof(si));
+        si.cb = sizeof(si);
+        ZeroMemory(&pi, sizeof(pi));
+        
+        std::wstring roblox_exe_path = roblox_exe.wstring();
+        if (!CreateProcessW(
+            roblox_exe_path.c_str(),
+            NULL,
+            NULL,
+            NULL,
+            FALSE,
+            0,
+            NULL,
+            NULL,
+            &si,
+            &pi
+        )) {
+            std::cerr << "[!] Failed to launch Roblox! Error: " << GetLastError() << "\n";
+        } else {
+            std::cout << "[+] Roblox launched successfully!\n";
+            CloseHandle(pi.hProcess);
+            CloseHandle(pi.hThread);
+        }
+        
+        std::cout << "\n[*] Press Enter to exit and restore original files...\n";
         std::cin.get();
-        return 1;
-    }
 
-    std::cout << "\n[*] Done! Now you can launch Roblox.\n";
-    std::cout << "[*] Press Enter to exit (will restore original when Roblox closes)...\n";
-    std::cin.get();
+        std::cout << "\n[*] Restoring original files...\n";
 
-    // Restore
-    try
-    {
-        std::cout << "[*] Restoring original RobloxPlayerBeta.exe...\n";
-        std::filesystem::copy_file(backup_exe, roblox_exe, std::filesystem::copy_options::overwrite_existing);
-        std::filesystem::remove(fake_dll_path);
-        std::cout << "[+] Restored successfully!\n";
+        bool restore_ok = true;
+
+        if (fs::exists(roblox_dxgi_dll))
+        {
+            try
+            {
+                fs::remove(roblox_dxgi_dll);
+                std::cout << "[*] Deleted dxgi.dll (proxy)\n";
+            }
+            catch (const fs::filesystem_error& e)
+            {
+                std::cerr << "[!] Failed to delete dxgi.dll: " << e.what() << "\n";
+                restore_ok = false;
+            }
+        }
+
+        if (fs::exists(roblox_dxgi_orig_dll))
+        {
+            try
+            {
+                fs::remove(roblox_dxgi_orig_dll);
+                std::cout << "[*] Deleted dxgi_orig.dll\n";
+            }
+            catch (const fs::filesystem_error& e)
+            {
+                std::cerr << "[!] Failed to delete dxgi_orig.dll: " << e.what() << "\n";
+                restore_ok = false;
+            }
+        }
+
+        if (restore_ok)
+        {
+            std::cout << "[+] Restored successfully!\n";
+        }
+        else
+        {
+            std::cout << "[!] Restore partially failed.\n";
+        }
+
     }
-    catch (const std::exception& e)
+    catch (const fs::filesystem_error& e)
     {
-        std::cerr << "[!] Error restoring: " << e.what() << "\n";
+        std::cerr << "[!] Filesystem error: " << e.what() << "\n";
+        std::cout << "[*] Press Enter to exit...\n";
         std::cin.get();
         return 1;
     }

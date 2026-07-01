@@ -2,53 +2,58 @@
 # Daftar Bug & Masalah
 
 ---
-
 ## Related Documentation
 - **For project overview**: [../README.md](../README.md)
 - **For architecture details**: [ARCHITECTURE.md](ARCHITECTURE.md)
 - **For roadmap & planning**: [PLANNING.md](PLANNING.md)
-- **For progress checkpoints**: [../checkpoints/CHECKPOINT_20260701.md](../checkpoints/CHECKPOINT_20260701.md)
+- **For progress checkpoints**: [../checkpoints/CHECKPOINT_20260701_FINAL.md](../checkpoints/CHECKPOINT_20260701_FINAL.md)
 
 ---
-
 ## Bug Aktif
 
 ### 1. Roblox Damaged (Import Hijacking)
-**Status**: Critical, Terdeteksi & Tidak Bisa Diperbaiki  
+**Status**: ❌ Critical, Dibatalkan!  
 **Deskripsi**: Ketika menggunakan BloxHubLoader/BloxHub.exe untuk memodifikasi Import Table RobloxPlayerBeta.exe, Roblox menampilkan pesan "Roblox has missing or damaged files. Please reinstall it." dan tidak bisa dibuka.  
-**Fakta**:
-- Backup dan restore otomatis bekerja dengan sempurna!
-- Copy DLL ke direktori Roblox berhasil!
-- Modifikasi Import Table berhasil (pe_bliss tidak error)!
-- Sudah coba ganti nama section dan perbaiki checksum — **tetap saja terdeteksi!**  
-**Kesimpulan**: Import Hijacking tidak bisa digunakan untuk melewati Hyperion saat ini!
-**Solusi yang Dipilih**: Pivot ke DLL Proxying! Lihat [Checkpoint Terakhir](../checkpoints/CHECKPOINT_20260701.md) dan [Planning & Roadmap](../docs/PLANNING.md)!
+**Alasan**: Hyperion Integrity Check memverifikasi hash file RobloxPlayerBeta.exe!  
+**Solusi**: Dibatalkan, pindah ke DLL Proxying!
 
 ### 2. Koneksi TCP Gagal (Silent Bridge)
-**Status**: Active  
-**Deskripsi**: Listener TCP di DLL tidak bisa dihubungi dari client. Error yang terjadi:
-- `connect failed` di sisi client
-- `recv() failed: 10038` di sisi listener (Socket operation on non-socket)  
-**Kemungkinan Penyebab**:
-- Socket tidak diinisialisasi dengan benar
-- WSAStartup tidak dipanggil sebelum membuat socket
-- Listener berhenti sebelum menerima koneksi
-- Firewall memblokir koneksi localhost
-**Rencana Perbaikan**: Pindahkan inisialisasi socket ke scheduler hook dan set ke Non-Blocking Mode! Lihat [Checkpoint Terakhir](../checkpoints/CHECKPOINT_20260701.md)!
+**Status**: ⏸️ Pending (Fokus ke DLL Proxy dulu)
+**Deskripsi**: Listener TCP di DLL tidak bisa dihubungi dari client.
 
-### 3. DLL Tidak Berjalan di Roblox
-**Status**: Active  
-**Deskripsi**: DLL berhasil diinjek tapi tidak berjalan sebagaimana mestinya di Roblox (hanya di Notepad).  
+### 3. DLL Proxy Gagal Load di Roblox
+**Status**: 🔄 Active
+**Deskripsi**:
+- Static .def: Proxy DLL tidak pernah dimuat oleh Roblox
+- Dynamic PE Patching (3Layers): Roblox mencoba load `dxgi.dll` tapi masih gagal!
 **Kemungkinan Penyebab**:
-- Hyperion memblokir DLL yang tidak dikenal
-- Inisialisasi yang hang di DLL_PROCESS_ATTACH
-- Crash karena akses memory yang tidak valid
+  - Kita pilih DLL target yang tidak dicari Roblox di folder aplikasi
+  - Proxy DLL masih memiliki bug di export table!
+**Langkah Debug**:
+  - Tambahkan lebih banyak logging di `DllMain` (ke file yang jelas seperti `C:\bloxhub_debug.txt`)
+  - Cek apakah `DllMain` dipanggil sama sekali!
+  - Coba DLL target lain yang biasa di-sideload!
 
-## Catatan Penting
-- ✅ **BloxHub.exe (Modern Loader Dasar) Sudah Berjalan**: Backup, copy DLL, dan restore bekerja!
-- ❌ **Import Hijack Tidak Bisa Lewati Hyperion**: Ini adalah masalah utama!
-- 📝 **Fokus Sekarang**: Pivot ke DLL Proxying!
-- 📌 **Referensi Lainnya**:
-  - [Checkpoint Terakhir](../checkpoints/CHECKPOINT_20260701.md)
-  - [Arsitektur Sistem](../docs/ARCHITECTURE.md)
-  - [Planning & Roadmap](../docs/PLANNING.md)
+---
+## Bug Yang Sudah Diperbaiki
+### Bug 1: LNK Error unresolved external `ReadFileFromDiskW`
+**Status**: ✅ Fixed!
+**Alasan**: `ReadFileFromDiskW` dideklarasikan static di dalam fungsi `ConvertPayloadToProxy`!
+**Fix**: Pindahkan deklarasi static ke atas file `pe_patcher.cpp`!
+
+---
+## Penemuan Penting
+### 1. KnownDLLs Registry
+JANGAN target DLL yang ada di `HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\KnownDLLs`! DLL tersebut selalu di-load dari System32 dan tidak bisa di-proxy!
+Daftar KnownDLLs yang dicek:
+- `winmm.dll` ❌
+- `kernel32.dll` ❌
+- `user32.dll` ❌
+- dll.
+
+### 2. DLL Yang Di-Load Tapi Tidak Di-Search di Folder App
+Banyak DLL yang muncul di daftar modules Roblox tapi tidak dicari di folder aplikasi! Kita harus coba satu per satu!
+
+---
+## Referensi
+- [Checkpoint Terakhir](../checkpoints/CHECKPOINT_20260701_FINAL.md)

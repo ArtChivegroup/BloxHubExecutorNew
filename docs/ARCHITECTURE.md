@@ -2,90 +2,105 @@
 # Arsitektur BloxHub Executor
 
 ---
-
 ## Related Documentation
 - **For project overview**: [../README.md](../README.md)
 - **For known bugs**: [BUGS.md](BUGS.md)
 - **For roadmap & planning**: [PLANNING.md](PLANNING.md)
-- **For progress checkpoints**: [../checkpoints/CHECKPOINT_20260701.md](../checkpoints/CHECKPOINT_20260701.md)
+- **For progress checkpoints**: [../checkpoints/CHECKPOINT_20260701_FINAL.md](../checkpoints/CHECKPOINT_20260701_FINAL.md)
 
 ---
-
 ## Overview
-BloxHub Executor adalah executor untuk Roblox yang dirancang dengan arsitektur **Modern Loader + Silent Bridge** untuk evasi Hyperion yang maksimal.
+BloxHub Executor adalah executor untuk Roblox yang dirancang dengan **Dynamic DLL Proxying (Runtime PE Patching)** untuk evasi Hyperion!
 
 ---
-
 ## Evolusi Arsitektur
-
 ### Sebelumnya
-- BloxHubLoader.exe (PE Editor Import Hijacking)
+- BloxHubLoader.exe (PE Editor Import Hijacking) ❌ Terdeteksi Hyperion!
 - BloxHubInjector.exe (Manual Map)
-- BloxHubClient.exe (TCP Client)
 - BloxHubInternal.dll (Payload)
 
-### Sekarang: Modern Loader (Beralih ke DLL Proxying)
-**Import Hijacking TERDETEKSI Hyperion!** Jadi kita akan **beralih ke DLL Proxying**! (lihat [Checkpoint Terakhir](../checkpoints/CHECKPOINT_20260701.md) dan [Daftar Bug](../docs/BUGS.md)!
+### Sekarang: Dynamic DLL Proxying with 3LayersPersistence
+**Static .def & Import Hijack gagal!** Jadi kita gunakan teknik **Runtime PE Patching** dari `EXAMPLE PROJECT/3LayersPersistence-main`!
 
 ---
-
 ## Komponen Utama
-
 ### 1. BloxHub.exe (Modern Loader)
-**Fungsi**: Gabungan Injector, UI dan TCP Client  
+**Fungsi**: Loader yang membuat proxy DLL secara runtime dan drop ke folder Roblox!  
 **Tanggung Jawab**:
-- **DLL Proxying Setup** (drop `version.dll` ke folder Roblox, rename asli jadi `version_orig.dll`)
-- **UI untuk memasukkan script Lua**
-- **TCP Client untuk berkomunikasi dengan DLL internal** (Silent Bridge)
+- Baca payload DLL proxy (contoh: `dxgi.dll`) dari folder build
+- Baca DLL asli dari System32 (contoh: `C:\Windows\System32\dxgi.dll`)
+- Buat export table forwarder ke `*_orig.dll` (contoh: `dxgi_orig.dll`) secara runtime!
+- Patch payload DLL dengan export table tersebut!
+- Copy DLL asli ke folder Roblox sebagai `*_orig.dll`
+- Drop proxy DLL yang sudah di-patch ke folder Roblox!
+- Auto-launch Roblox setelah 3 detik countdown!
+- Restore file Roblox ketika selesai!
 
-### 2. BloxHubInternal.dll (Payload DLL)
-**Fungsi**: DLL internal yang diinjek ke Roblox  
+### 2. Payload Proxy DLL (`dxgi.dll` / dll lain)
+**Fungsi**: DLL proxy yang dimuat Roblox, kemudian menjalankan payload kita!  
 **Tanggung Jawab**:
-- **PE Header Wiping**: Hapus PE header sendiri dari memory saat attach
-- **TCP Listener (Dynamic Port)**: Listen koneksi dari BloxHub.exe di port dinamis per sesi
-- **Execution Queue**: Thread-safe queue untuk menyimpan payload Lua
-- **Scheduler Hook**: Hook ke Task Scheduler Roblox untuk mengeksekusi payload di main thread (whitelisted anti-tamper)
-- **Integrasi LuaVM**: Eksekusi script Lua
+- `DllMain`: Cek apakah di-load oleh RobloxPlayerBeta.exe
+- Load `*_orig.dll` (contoh: `dxgi_orig.dll`)
+- Forward semua fungsi ke `*_orig.dll`
+- Logging ke file
+- PE Header Wiping (jika berhasil dimuat Roblox)
+
+### 3. `pe_patcher.h` & `pe_patcher.cpp`
+**Fungsi**: Core library untuk Runtime PE Patching, diadaptasi dari `3LayersPersistence`!  
+**Fitur**:
+- `ReadFileFromDiskW`: Baca file PE dari disk
+- `RvaToFileOffset`: Konversi RVA ke file offset
+- `ComputePECheckSum`: Hitung checksum PE
+- `BuildExportTableFromDll`: Bangun export table forwarder dari DLL asli
+- `PatchExportAddressTable`: Tambahkan section .edata ke payload DLL
+- `ConvertPayloadToProxy`: Fungsi utama yang menggabungkan semua langkah di atas!
 
 ---
-
-## Arsitektur Modern Loader + Silent Bridge
+## Alur Kerja Dynamic Proxy
 ```
-[BloxHub.exe (Modern Loader)]
+[BloxHub.exe]
     |
-    |-- (DLL Proxying: version.dll)
+    |-- 1. Baca payload DLL proxy (dxgi.dll) dari disk
+    |-- 2. Baca DLL asli dari System32 (C:\Windows\System32\dxgi.dll)
+    |-- 3. BuildExportTableFromDll() → buat export table forward ke dxgi_orig.dll
+    |-- 4. PatchExportAddressTable() → patch payload DLL dengan export table baru
+    |-- 5. Copy System32 dxgi.dll → Roblox folder/dxgi_orig.dll
+    |-- 6. Write proxy dxgi.dll (sudah di-patch) ke Roblox folder
+    |-- 7. Tunggu 3 detik countdown
+    |-- 8. Auto-launch RobloxPlayerBeta.exe
     ↓
-[BloxHubInternal.dll di Roblox]
+[RobloxPlayerBeta.exe]
     |
-    |-- (TCP Listener: Dynamic Port)
+    |-- Mencari dxgi.dll di folder aplikasi terlebih dahulu
+    |-- Memuat proxy dxgi.dll kita!
     ↓
-[Silent Bridge: Localhost TCP]
+[Proxy dxgi.dll]
     |
-    |-- (Script Execution via Scheduler Hook)
-    ↓
-[Lua Script dijalankan di Main Thread Roblox]
+    |-- DllMain dipanggil
+    |-- Cek apakah host = RobloxPlayerBeta.exe
+    |-- Load dxgi_orig.dll
+    |-- Forward semua fungsi ke dxgi_orig.dll
+    |-- Log ke %TEMP%\bloxhub_test.txt
+    |-- (Jika di Roblox) Wipe PE Header
 ```
 
 ---
-
-## Teknik Evasi Hyperion
-1. **DLL Proxying**: Tidak memodifikasi RobloxPlayerBeta.exe sama sekali!
-2. **CFG Bypass**: Lihat `../EXAMPLE PROJECT/RBX-cfg-bypass-main/!
-3. **PE Header Wiping**: DLL menghapus PE header sendiri dari memory saat attach
-4. **Dynamic Port Handshake**: Port TCP Silent Bridge dinamis per sesi
-5. **Scheduler Hooking**: Eksekusi Lua di main thread Roblox (ter-whitelist anti-tamper)
+## Teknik Dari 3LayersPersistence
+1. **Dynamic Export Table Generation**: Tidak perlu .def manual, baca export table DLL asli secara runtime!
+2. **Timestamp Spoofing**: Timestamp proxy DLL dibuat lebih tua 30-60 hari dari asli!
+3. **Export Sorting**: Nama di export table diurutkan ascending untuk kompatibilitas!
+4. **Checksum Recalculation**: Hitung ulang PE checksum setelah memodifikasi!
+5. **.edata Section Baru**: Tambahkan section baru untuk export table yang di-generate!
 
 ---
-
 ## Tech Stack
 - **Bahasa**: C++20
 - **Build System**: CMake
-- **Library**: pe_bliss (optional, untuk PE parsing), Winsock (TCP)
+- **Library**: Shlwapi (PathRemoveFileSpec), Winsock (opsional untuk silent bridge)
+- **Referensi**: `EXAMPLE PROJECT/3LayersPersistence-main` & `EXAMPLE PROJECT/RBX-cfg-bypass-main`
 - **Target**: Windows 10+ x64
 
 ---
-
-## Referensi Lainnya
-- [Checkpoint Terakhir](../checkpoints/CHECKPOINT_20260701.md) - Progres terakhir
-- [Daftar Bug](../docs/BUGS.md) - Bug yang sedang terjadi
-- [Planning & Roadmap](../docs/PLANNING.md) - Rencana pengembangan selanjutnya
+## Referensi
+- [Checkpoint Terakhir](../checkpoints/CHECKPOINT_20260701_FINAL.md)
+- [Daftar Bug](../docs/BUGS.md)
