@@ -9,11 +9,16 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 
-# Payload DLL for manual map inject
+# Payload DLL for manual map inject (NO-CRT, pure Win32)
 add_library(BloxHubInternal SHARED
     src/internal/dllmain.cpp
 )
 target_include_directories(BloxHubInternal PRIVATE ${CMAKE_SOURCE_DIR}/include)
+# Use static CRT to avoid DLL dependencies (simple and stable first)
+if(MSVC)
+    target_compile_options(BloxHubInternal PRIVATE /GS- /O2 /GL /Oi /Ot /MT)
+    target_link_options(BloxHubInternal PRIVATE /RELEASE /SUBSYSTEM:WINDOWS /OPT:REF /OPT:ICF /LTCG)
+endif()
 
 # Proxy payload for sideload experiments (pe_patcher output source)
 add_library(proxy_payload SHARED

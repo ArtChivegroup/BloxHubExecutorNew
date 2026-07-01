@@ -1,6 +1,6 @@
 # TODO BloxHub — Satu Step Per Sesi
 
-**Terakhir diperbarui:** Juli 2026  
+**Terakhir diperbarui:** 2 Juli 2026  
 **Konteks:** [`STATUS.md`](STATUS.md) · [`PLANNING.md`](PLANNING.md)
 
 Dokumen ini adalah **checklist kerja berurutan**. Setiap step punya satu kondisi sukses. Kalau tidak terpenuhi, step itu belum selesai — **jangan lanjut**.
@@ -17,11 +17,11 @@ MASUK ROBLOX ──→ KOMUNIKASI ──→ EXECUTE
 
 | Fase | Step | Ringkasan |
 |------|------|-----------|
-| MASUK ROBLOX | 1–3b | Buktikan payload hidup di proses Roblox |
+| MASUK ROBLOX | 1–3b | Buktikan payload hidup di proses Roblox ✅ |
 | KOMUNIKASI | 4–6 | Buktikan loader ↔ payload bisa saling baca sinyal |
 | EXECUTE | 7–8 | Baca/tulis memory game di dalam Roblox |
 
-**Progress saat ini:** Inject manual stabil (2× tidak crash, `DllMain returned`) — Step 1 menunggu konfirmasi console di layar.
+**Progress saat ini:** **Fase 1 SELESAI!** — bukti: `[BloxHub] DllMain PROCESS_ATTACH - SUCCESS!` di **DebugView**.
 
 ---
 
@@ -29,19 +29,19 @@ MASUK ROBLOX ──→ KOMUNIKASI ──→ EXECUTE
 
 ### Step 1 — Console di DllMain (injector stomp)
 
-**Apa:** Injector stomp (`stomp_inject.cpp`) memanggil **DllMain**. `DebugConsoleLog` di `DLL_PROCESS_ATTACH` print `"[BloxHub] DllMain PROCESS_ATTACH"`. Rebuild full Release, inject.
+**Apa:** Injector stomp (`stomp_inject.cpp`) memanggil **DllMain**. `OutputDebugStringA` di `DLL_PROCESS_ATTACH` print `"[BloxHub] DllMain PROCESS_ATTACH - SUCCESS!"`. Rebuild full Release, inject.
 
-**Injector:** module stomp `d3d10warp.dll` + manual map (reloc, import) — **TLS/SEH sengaja di-skip** (crash). DllMain via **`CreateRemoteThread` sync** + wait (`TpExecuteShellcodeSync`). **Tanpa** CFG bypass.
+**Injector:** module stomp `d3d10warp.dll` + manual map (reloc, import) — **TLS/SEH sengaja di-skip** (crash). DllMain via **IoCompletion async** (bukan CreateRemoteThread!).
 
-**Cara uji (disarankan):** Roblox sudah in-game → `BloxHubInjector.exe` as Admin (bukan `BloxHub.exe --inject` dulu — timing lebih aman).
+**Cara uji (disarankan):** Roblox sudah in-game → `BloxHubInjector.exe` as Admin + buka **DebugView (Capture Global Win32)**.
 
-**Sukses:** Console hitam di Roblox dengan teks `DllMain PROCESS_ATTACH` **atau** minimal Roblox tidak crash + log injector `DllMain returned`.
+**Sukses:** DebugView menampilkan pesan **`[BloxHub] DllMain PROCESS_ATTACH - SUCCESS!`**.
 
-**Gagal:** Roblox crash setelah inject → cek build terbaru (TLS/SEH harus skip). Tidak ada console tapi tidak crash → lanjut Step 4 (file absolut) sebagai bukti alternatif.
+**Gagal:** Roblox crash setelah inject → cek `TpDirect` struct di `tp_execute.cpp` dan pastikan section protect tidak di-restore.
 
 **File:** `src/internal/dllmain.cpp`, `src/injector/stomp_inject.cpp`, `src/injector/tp_execute.cpp`
 
-**Status:** 🔄 inject stabil (2× tidak crash, DllMain returned) — konfirmasi console di layar?
+**Status:** ✅ **SELESAI!** Fase 1 selesai!
 
 ---
 
@@ -65,13 +65,13 @@ CFG bypass dihapus. Injector diganti module stomp (Riviera-style).
 
 ### Step 4 — Tulis file ke path absolut
 
-**Apa:** Hapus `AllocConsole` debug. Di `DllMain`, tulis `"hello"` ke `C:\BloxHub\test.txt`. Rebuild `BloxHubInternal.dll`, inject.
+**Apa:** Di `DllMain`, tulis `"hello"` ke `C:\BloxHub\test.txt` (gunakan WinAPI langsung, tanpa CRT). Rebuild `BloxHubInternal.dll`, inject.
 
 **Sukses:** `C:\BloxHub\test.txt` ada dan isinya `"hello"`.
 
-**Gagal:** File tidak ada → kemungkinan `CreateDirectoryA` / `fopen` gagal di dalam proses Roblox. Coba ganti ke `WriteFile` (WinAPI langsung, tanpa CRT).
+**Gagal:** File tidak ada → kemungkinan `CreateDirectoryA` / `WriteFile` gagal di dalam proses Roblox. Coba ganti path ke `C:\test_bloxhub.txt` (tanpa folder).
 
-**Status:** ⬜ belum dikerjakan
+**Status:** ⬜ siap dikerjakan
 
 ---
 
@@ -129,11 +129,10 @@ CFG bypass dihapus. Injector diganti module stomp (Riviera-style).
 
 | Gejala | Kemungkinan |
 |--------|-------------|
-| Inject OK, Roblox crash | TLS/SEH aktif — harus skip; atau payload terlalu berat di DllMain |
-| Inject OK, tidak crash, tidak ada console | `AllocConsole` gagal/tersembunyi di belakang Roblox — coba Step 4 (`C:\BloxHub\test.txt`) |
+| Inject OK, Roblox crash | TLS/SEH aktif — harus skip; atau payload terlalu berat di DllMain; atau section protect di-restore terlalu awal |
+| Inject OK, tidak crash, tidak ada pesan di DebugView | Pastikan **Capture Global Win32** diaktifkan; jalankan DebugView **as Administrator** |
 | File di `%TEMP%` tidak ketemu dari luar | `GetTempPath()` di dalam Roblox ≠ `%TEMP%` user — expected sampai Step 6 |
-| Log `CreateRemoteThread OK` | Normal — DllMain memang pakai sync thread, bukan IoCompletion |
-| Inject ke-2 di PID sama | Bisa jalan (base stomp beda); idealnya sekali per sesi Roblox |
+| Log `ZwSetIoCompletion OK` di injector | Normal — DllMain dipanggil via IoCompletion async |
 
 **Build cepat (hanya payload):**
 ```cmd
@@ -142,7 +141,7 @@ cmake --build build --config Release --target BloxHubInternal
 
 **Build injector:**
 ```cmd
-cmake --build build --config Release --target BloxHub
+cmake --build build --config Release --target BloxHubInjector
 ```
 
 ```cmd
@@ -150,7 +149,7 @@ cd build\bin\Release
 BloxHubInjector.exe
 ```
 
-(Buka Roblox, masuk game, baru jalankan injector as Admin.)
+(Buka Roblox, masuk game, baru jalankan injector as Admin. Buka DebugView dengan **Capture Global Win32** diaktifkan!)
 
 ---
 
