@@ -275,7 +275,7 @@ static DWORD WaitForRobloxGameProcess(DWORD launchPid, int timeoutSec)
 
 static bool RunInject(SessionInfo& session)
 {
-    std::cout << "[INJECT] Module stomp (d3d10warp) + IoCompletion...\n";
+    std::cout << "[INJECT] Module stomp (d3d10warp) + synchronous thread...\n";
 
     DWORD targetPid = WaitForRobloxGameProcess(session.roblox_pid, 45);
     if (!targetPid)
