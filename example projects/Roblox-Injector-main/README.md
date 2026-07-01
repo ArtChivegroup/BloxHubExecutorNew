@@ -1,0 +1,7 @@
+PLEASE STAR THIS TOOK ME A LONG TIME
+
+also my executor (riviera) if u want u can join:
+https://discord.gg/2NdeZtYYTU
+
+IF WE HIT 25 STARS I WILL RELEASE A KERNEL INJECTOR WITH A DRIVER, 50 STARS ANOTHER DRIVERLESS INJECTOR (more stable and big dlls)
+ 

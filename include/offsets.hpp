@@ -414,10 +414,4 @@ namespace offsets {
         inline constexpr uintptr_t WorldSteps = 0x680;
     }
 
-    namespace CfgBypass {
-        inline constexpr uintptr_t BitmapPtr = 0x0;
-        inline constexpr uintptr_t Whitelist = 0x0;
-        inline constexpr uintptr_t InsertSet = 0x0;
-    }
-
 } // namespace offsets

@@ -64,17 +64,7 @@ Offset game ada di `include/offsets.hpp`. Sumber mentah: `offsets/raw/offsets.h`
 copy /Y offsets\raw\offsets.h include\offsets.hpp
 ```
 
-**Penting:** Setelah copy, cek akhir file masih ada namespace `CfgBypass`:
-
-```cpp
-namespace CfgBypass {
-    inline constexpr uintptr_t BitmapPtr = 0x0;
-    inline constexpr uintptr_t Whitelist = 0x0;
-    inline constexpr uintptr_t InsertSet = 0x0;
-}
-```
-
-Kalau hilang, tambahkan manual. Lalu rebuild.
+Lalu rebuild. Injector stomp tidak membutuhkan offset tambahan di luar dump game.
 
 Versi aktif saat ini: `version-5cf2272675e145f5` (lihat baris `roblox_version` di header).
 

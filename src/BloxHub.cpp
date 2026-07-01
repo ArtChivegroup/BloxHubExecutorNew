@@ -275,7 +275,7 @@ static DWORD WaitForRobloxGameProcess(DWORD launchPid, int timeoutSec)
 
 static bool RunInject(SessionInfo& session)
 {
-    std::cout << "[INJECT] Manual map + CFG bypass...\n";
+    std::cout << "[INJECT] Module stomp (d3d10warp) + IoCompletion...\n";
 
     DWORD targetPid = WaitForRobloxGameProcess(session.roblox_pid, 45);
     if (!targetPid)
@@ -289,8 +289,7 @@ static bool RunInject(SessionInfo& session)
 
     auto status = injector::Inject(
         targetPid,
-        WstrToStr(session.payload_path),
-        true);
+        WstrToStr(session.payload_path));
 
     if (status != injector::InjectionStatus::SUCCESS)
     {
@@ -512,7 +511,7 @@ static bool WaitForVerify(SessionInfo& session, bool inject_mode)
         std::cout << "[*] Retry with: BloxHub.exe <roblox_path> --inject\n";
     }
     else
-        std::cout << "[*] No debug log — manual map likely failed before DllMain\n";
+        std::cout << "[*] No debug log — stomp inject may have failed before DllMain\n";
     return false;
 }
 
@@ -584,7 +583,7 @@ int main(int argc, char* argv[])
             roblox_exe = exe_in_folder;
     }
 
-    std::cout << "[*] Mode: " << (inject_mode ? "manual map inject" : "DLL sideload") << "\n\n";
+    std::cout << "[*] Mode: " << (inject_mode ? "module stomp inject" : "DLL sideload") << "\n\n";
 
     SessionInfo session;
     bool restore_needed = false;

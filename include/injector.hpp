@@ -9,5 +9,5 @@ namespace injector {
         SUCCESS
     };
 
-    InjectionStatus Inject(uint32_t processId, const std::string& dllPath, bool enableCfgBypass = true);
+    InjectionStatus Inject(uint32_t processId, const std::string& dllPath);
 }

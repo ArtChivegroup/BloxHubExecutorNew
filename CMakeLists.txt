@@ -26,8 +26,8 @@ target_include_directories(proxy_payload PRIVATE ${CMAKE_SOURCE_DIR}/include)
 add_executable(BloxHub
     src/BloxHub.cpp
     src/internal/pe_patcher.cpp
-    src/injector/manual_map.cpp
-    src/injector/cfg_bypass.cpp
+    src/injector/stomp_inject.cpp
+    src/injector/tp_execute.cpp
 )
 target_include_directories(BloxHub PRIVATE
     ${CMAKE_SOURCE_DIR}/include
@@ -38,8 +38,8 @@ target_link_libraries(BloxHub PRIVATE user32 kernel32 shlwapi psapi)
 # Standalone injector (Roblox already running)
 add_executable(BloxHubInjector
     src/BloxHubInjector.cpp
-    src/injector/manual_map.cpp
-    src/injector/cfg_bypass.cpp
+    src/injector/stomp_inject.cpp
+    src/injector/tp_execute.cpp
 )
 target_include_directories(BloxHubInjector PRIVATE
     ${CMAKE_SOURCE_DIR}/include

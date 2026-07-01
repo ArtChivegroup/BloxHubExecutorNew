@@ -36,23 +36,19 @@ BloxHub.exe "C:\...\version-5cf2272675e145f5\RobloxPlayerBeta.exe" --inject
 [PREFLIGHT] OK
 [LAUNCH] Roblox launched (PID: ...)
 [+] Roblox game process ready (PID: ...)   ← bisa sama atau beda dari launch PID
-[*] Allocated remote image at: ...
-[*] DLL written to remote process
-[*] Executing CFG bypass ...
-[+] BloxHubInit executed successfully!
+[*] Stomp module mapped at: ...
+[*] RobloxPlayerBeta.dll base: ...
+[*] Payload written to stomp region
+[*] Calling DllMain at: ...
+[+] DllMain dispatched
 [INJECT] OK
-[VERIFY] Payload loaded successfully!      ← ideal; saat ini sering timeout
+[VERIFY] ...                    ← masih sering timeout sampai Step 6
 ```
 
-### Cek bukti inject
+### Cek bukti inject (Fase 1)
 
-```cmd
-type %TEMP%\bloxhub_test.txt
-type %TEMP%\bloxhub_payload_loaded.txt
-
-REM Kalau kosong, cari di seluruh AppData (Roblox sandbox temp):
-dir /s /b %USERPROFILE%\AppData\bloxhub_test.txt
-```
+- Console di proses Roblox: `[BloxHub] DllMain PROCESS_ATTACH`
+- Terminal: `DllMain dispatched`, `ZwSetIoCompletion OK`
 
 ### Alternatif: injector standalone
 
@@ -103,7 +99,7 @@ Hyperion menolak proxy sebelum `DllMain` jalan. Gejala:
    ```cmd
    copy /Y offsets\raw\offsets.h include\offsets.hpp
    ```
-3. Pastikan blok `CfgBypass` masih ada di akhir file (lihat `STATUS.md`)
+3. Rebuild — tidak perlu `CfgBypass` (lihat `BUILD.md`)
 4. Rebuild:
    ```cmd
    cmake --build build --config Release
@@ -124,7 +120,7 @@ Kalau masih gagal: jalankan **as Administrator**.
 Lihat [`STATUS.md`](STATUS.md) — hipotesis utama:
 
 - Log ditulis ke temp sandbox Roblox, bukan `%TEMP%` user  
-- `BloxHubInit` crash di dalam proses  
+- DllMain crash di dalam proses  
 - CFG scan salah target  
 
 ### Versi mismatch

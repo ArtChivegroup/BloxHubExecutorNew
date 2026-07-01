@@ -1,98 +1,39 @@
-# Checkpoint — Kondisi Saat Istirahat
+# Checkpoint 01 — Injector Stomp Stabil
 
 **Tanggal:** Juli 2026  
-**Versi Roblox:** `version-5cf2272675e145f5`  
-**Offset sumber:** `newRawOffset]/offsets.h` → `include/offsets.hpp`
-
-Dokumen ini menggantikan checkpoint lama sebagai **ringkasan sesi terakhir**. Checkpoint lain di folder ini = historis.
+**Versi Roblox:** `version-5cf2272675e145f5`
 
 ---
 
-## Apa yang Dikerjakan di Sesi Ini
-
-### Diagnosa sideload timeout
-- Verify gagal karena `DllMain` proxy tidak pernah jalan  
-- Hyperion menolak `dxgi.dll` yang dimodifikasi  
-- Bukan masalah urutan `DllMain` saja — proxy tidak masuk proses  
-
-### Perbaikan kode (sudah di-build)
-- `proxy_payload.cpp` — marker lebih dulu, forward load di thread  
-- `BloxHub.cpp` — mode `--inject`, wait PID game, verify ganda  
-- `dllmain.cpp` — marker di `DllMain` (untuk inject belum terpanggil)  
-- `offsets.hpp` — update ke versi Roblox baru  
-- `manual_map.cpp` — log error per-step, coba `CfgBypass::BitmapPtr`  
-
-### Hasil uji terakhir user
-
-**Sideload:** gagal (expected) — tidak ada log  
-
-**Inject `--inject`:**
-```
-[+] Roblox game process ready (PID: 8872)
-[*] Allocated remote image at: 0x1C0000
-[+] BloxHubInit executed successfully!
-[INJECT] OK
-[VERIFY] timeout — tidak ada bloxhub_test.txt
-```
-
-**BloxHubInjector.exe:** sama — inject "sukses", tidak ada log file  
-
----
-
-## Kesimpulan Sesi
+## Kondisi Saat Ini
 
 | Area | Status |
 |------|--------|
-| Build | ✅ |
-| Sideload | ❌ mati (Hyperion) |
-| Inject infrastruktur | ✅ allocate/write/thread OK |
-| Payload hidup di Roblox | ❓ tidak terbukti |
-| Verify | ❌ desain/path salah |
-| CFG bypass | ⚠️ auto-scan tidak stabil |
-| Dokumentasi | ✅ dirapikan |
+| `BloxHubInjector.exe` manual | ✅ 2× inject, tidak crash |
+| `DllMain` sync thread | ✅ `DllMain returned` |
+| Console `PROCESS_ATTACH` | ❓ belum dikonfirmasi user |
+| `BloxHub.exe --inject` | ⏸ pakai manual dulu |
+| Verify `%TEMP%` | ❌ expected — Step 4 |
 
 ---
 
-## File Kunci yang Berubah
+## Fix yang membuat stabil
 
-- `src/BloxHub.cpp`
-- `src/internal/proxy_payload.cpp`
-- `src/internal/dllmain.cpp`
-- `src/injector/manual_map.cpp`
-- `include/offsets.hpp`
-- `CMakeLists.txt` (BloxHub link injector)
-- `docs/*` (rewrite)
-- `README.md`
+- Skip TLS + SEH di stomp injector
+- DllMain via `CreateRemoteThread` + wait (bukan IoCompletion async)
+- Payload minimal: cuma `AllocConsole` + satu baris log
 
 ---
 
-## Langkah Pertama Saat Lanjut
+## Langkah Berikutnya
 
-1. Baca `docs/STATUS.md`  
-2. Jangan fix random — fokus P0 di `docs/PLANNING.md`  
-3. Procmon atau cari log di `AppData` sandbox  
+1. User konfirmasi: console muncul di layar atau tidak?
+2. Kalau tidak muncul → Step 4 awal (`C:\BloxHub\test.txt`) sebagai bukti alternatif
+3. Kalau console OK → Step 1 ✅, lanjut komunikasi (Step 4–6)
 
----
-
-## Perintah Cepat
-
+**Test:**
 ```cmd
 cd build\bin\Release
-BloxHub.exe "C:\Users\Administrator\AppData\Local\Bloxstrap\Versions\version-5cf2272675e145f5" --inject
+BloxHubInjector.exe
 ```
-
-Wajib **Administrator**.
-
----
-
-## Dokumentasi Baru
-
-| File | Peran |
-|------|-------|
-| `docs/STATUS.md` | **Mulai di sini** |
-| `README.md` | Index singkat |
-| `docs/USAGE.md` | Cara pakai |
-| `docs/BUGS.md` | Bug terbuka |
-| `docs/PLANNING.md` | Prioritas lanjut |
-
-Checkpoint lama dihapus saat repo cleanup (Juli 2026). Lihat `docs/STATUS.md`.
+(Roblox in-game dulu, Admin)

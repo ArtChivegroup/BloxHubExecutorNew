@@ -1,0 +1,23 @@
+OFFSETLESS INJECTOR by devkanel
+yo, i made this injector so u dont have to deal with annoying offsets every time the game updates.
+
+how it works:
+it uses thread hijacking and module stomps your dll into d3d10warps.dll. simple as that.
+
+there’s a driver included in the files but the injector doesn't use it by default, but it's there if u want to set it up yourself to stay fully undetected.
+
+NOTE: if the project wont build, it’s probably cuz u don't got the WDK (windows driver kit) installed. just unload the driver project and it should build.
+
+also, thejre is a small flaw,
+I've added TLS and SEH (creds to cherpixel for seh and tls) but i still heard with some big dlls it might crash, u can try stomping mshtml.dll if u need more space but the injector is stable,
+but if you experience crashes when injecting, its the injector, it injects but some dlls fail, you can fork the repo and try fixing that, if u do fix it, dm me on discord (@kaneldev) and ill 
+accept the merge. but that's pretty much it, i currently also have
+
+contact / help
+if it still wont build or u have questions, dm me on discord.
+
+discord: kaneldev
+
+stop asking for offsets and enjoy. :)
+
+ENJOY SKIDS!!! (READ LICENSE PLZ)

@@ -30,12 +30,12 @@ BloxHubExecutorNew/
 ├── docs/                 # Documentation
 ├── include/
 │   ├── injector.hpp
-│   └── offsets.hpp       # Active game offsets (+ CfgBypass)
-├── offsets/raw/          # roblox-dumper output (copy source for offsets.hpp)
+│   └── offsets.hpp       # Active game offsets (from offsets/raw)
+├── offsets/raw/          # roblox-dumper output
 ├── src/
 │   ├── BloxHub.cpp       # Main loader
 │   ├── BloxHubInjector.cpp
-│   ├── injector/         # manual_map + cfg_bypass
+│   ├── injector/         # stomp_inject + tp_execute
 │   └── internal/         # pe_patcher, payloads
 └── checkpoints/          # Session notes (CHECKPOINT_CURRENT.md)
 ```
@@ -58,6 +58,7 @@ BloxHubExecutorNew/
 | Doc | Purpose |
 |-----|---------|
 | [`docs/STATUS.md`](docs/STATUS.md) | Current project state |
+| [`docs/TODO.md`](docs/TODO.md) | Step-by-step checklist (one step per session) |
 | [`docs/USAGE.md`](docs/USAGE.md) | Commands & troubleshooting |
 | [`docs/BUILD.md`](docs/BUILD.md) | Build & offset updates |
 | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Components & flows |
@@ -70,8 +71,8 @@ BloxHubExecutorNew/
 
 | Item | Status |
 |------|--------|
-| `--inject` infrastructure | Works (allocate, CFG, remote thread) |
-| Payload verification | Not confirmed (log path issue) |
+| `--inject` infrastructure | Module stomp + IoCompletion |
+| Payload verification | Pending Step 1 test (console) |
 | Sideload `dxgi.dll` | Blocked by Hyperion |
 | Offsets | `version-5cf2272675e145f5` |
 
@@ -86,4 +87,4 @@ copy /Y offsets\raw\offsets.h include\offsets.hpp
 cmake --build build --config Release
 ```
 
-Ensure `CfgBypass` namespace remains at end of `offsets.hpp`. See [`docs/BUILD.md`](docs/BUILD.md).
+See [`docs/BUILD.md`](docs/BUILD.md).
