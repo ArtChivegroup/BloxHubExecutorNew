@@ -297,7 +297,7 @@ Interpretasi arsitektural:
 | `src/BloxHub.cpp` | Launcher dan installer proxy |
 | `src/internal/pe_patcher.cpp` | Engine patching PE/proxy generation |
 | `src/internal/pe_patcher.h` | Kontrak publik generator proxy |
-| `src/internal/version_proxy.cpp` | Payload/proxy basis untuk jalur loader saat ini |
+| `src/internal/proxy_payload.cpp` | Payload/proxy basis untuk jalur loader (generic, derive forward name dari filename sendiri) |
 | `src/BloxHubLoader.cpp` | PoC patch import langsung ke EXE |
 | `src/BloxHubInjector.cpp` | CLI untuk manual map |
 | `src/injector/manual_map.cpp` | Engine manual mapping |

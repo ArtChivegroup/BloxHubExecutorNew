@@ -58,11 +58,12 @@ add_library(BloxHubInternal SHARED
 )
 target_include_directories(BloxHubInternal PRIVATE ${CMAKE_SOURCE_DIR}/include)
 
-# version.dll (Proxy DLL for Roblox)
-add_library(version SHARED
-    src/internal/version_proxy.cpp
+# proxy_payload.dll (Proxy DLL for Roblox — generic, self-derives forward name)
+add_library(proxy_payload SHARED
+    src/internal/proxy_payload.cpp
 )
-target_include_directories(version PRIVATE ${CMAKE_SOURCE_DIR}/include)
+set_target_properties(proxy_payload PROPERTIES OUTPUT_NAME "version")
+target_include_directories(proxy_payload PRIVATE ${CMAKE_SOURCE_DIR}/include)
 
 # BloxHubInjector EXE
 add_executable(BloxHubInjector

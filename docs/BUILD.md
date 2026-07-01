@@ -72,7 +72,7 @@ Target utama yang didefinisikan di `CMakeLists.txt`:
 | `BloxHubLoader` | EXE | PoC patch-import langsung ke target PE |
 | `BloxHubInjector` | EXE | Injector manual map + CFG bypass |
 | `BloxHubInternal` | DLL | Payload legacy untuk track manual map |
-| `version` | DLL | Payload/proxy basis untuk `BloxHub.exe` |
+| `version` | DLL | Payload/proxy basis (generic, self-derives forward name) |
 | `TestProxy` | EXE | Utility test legacy |
 
 Contoh isi folder output `Release`:
