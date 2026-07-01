@@ -111,14 +111,20 @@ Catatan penting:
 - jalur ini adalah baseline implementasi yang ada sekarang,
 - bukan bukti bahwa `version.dll` sudah pasti target terbaik untuk loader akhir.
 
-### 3a. Kandidat target loader yang sedang dianalisis
+### 3a. Kandidat target loader — ranking final (updated 2026-07-02)
 
-Hasil analisa terbaru menambah konteks penting untuk pemilihan target DLL:
+Hasil analisa dan string scan pada `RobloxPlayerBeta.exe` lokal:
 
-- `dxgi.dll` memiliki sinyal paling konkret pada instalasi Roblox lokal saat ini karena nama exact-nya muncul di `RobloxPlayerBeta.exe`.
-- `WebView2Loader.dll` juga ada secara nyata di folder version Roblox lokal, dan `RobloxPlayerBeta.exe` mengandung string WebView2 seperti `CreateCoreWebView2Environment`.
-- Namun, analisa cepat ini belum membuktikan bahwa `RobloxPlayerBeta.exe` melakukan import statis exact ke `WebView2Loader.dll`.
-- `version.dll` tetap berguna sebagai baseline implementasi loader yang sudah ada, tetapi bukti target-nya lebih lemah daripada `dxgi.dll`.
+| DLL Candidate | String Exact di EXE | File di Folder Roblox | Export Count | Tingkat Kesulitan |
+|---------------|---------------------|-----------------------|--------------|-------------------|
+| `dxgi.dll` | **1 match** | System DLL | ~720 | Proxy forwarding (pe_patcher capable) |
+| `dsound.dll` | **1 match** | System DLL | Moderate | Proxy forwarding (proven di 3LayersPersistence) |
+| `d3d11.dll` | 3 match | System DLL | High | Proxy forwarding |
+| `WebView2Loader.dll` | 0 match | **Ada** | 4 | Export emulation + contract re-imp (berat) |
+| `version.dll` | 0 match | System DLL | Low | Proxy forwarding (baseline existing) |
+| `kernel32/user32/ntdll` | 1 match each | System DLL | - | BUKAN target (KnownDLLs, tidak bisa di-hijack) |
+
+**Catatan penting**: string scan BUKAN bukti import statis. Metode ini hanya membaca byte string dalam binary; `kernel32.dll` misalnya pasti selalu ada di import table. Yang SIGNIFIKAN adalah `dxgi.dll` dan `dsound.dll` karena mereka bukan DLL yang selalu di-import setiap Windows executable — kehadirannya di binary lebih mungkin berasal dari import table actual. Tetap perlu verifikasi dengan PE parser formal.
 
 **Referensi teknis WebView2Loader-style hijack:**
 
@@ -136,12 +142,32 @@ Pola ini relevan untuk loader:
 - cocok jika target memang memuat DLL tersebut secara statis atau dinamis,
 - risiko: lebih sulit dikembangkan daripada proxy sederhana, karena harus memahami contract lengkap DLL target.
 
+**Referensi teknis 3LayersPersistence (Maldev Academy):**
+
+Proyek [3LayersPersistence](../EXAMPLE%20PROJECT/3LayersPersistence-main) memberikan referensi arsitektur EXE-to-DLL conversion yang sangat mirip dengan `pe_patcher`:
+
+- `ConvertExecutableToDll()` ([ConvertExeToDll.c](../EXAMPLE%20PROJECT/3LayersPersistence-main/3LayersPersistence/ConvertExeToDll.c)): membaca EXE dari disk, patch menjadi proxy DLL yang meniru export DLL target.
+- Flow: set `IMAGE_FILE_DLL` → redirect `AddressOfEntryPoint` ke `DllMain` → ubah subsystem → baca export DLL asli → build forwarded export table → append `.edata` section baru → stomp PE timestamp (30 hari lebih tua) → stomp debug directory timestamp → update checksum.
+- `EXPORT_ENTRY` struct **identik** dengan yang ada di `pe_patcher.h` — arsitektur yang sama.
+- Layer 3 (sideloading) membuktikan: **`dsound.dll` sideload sudah proven** di production malware. Ini memperkuat posisi `dsound.dll` sebagai kandidat target.
+- Fitur tambahan yang belum ada di `pe_patcher`: timestamp stomping, debug directory patching, entry point redirect. Bisa diadopsi di fase L5.
+
+**Referensi teknis RBX-cfg-bypass:**
+
+Proyek [RBX-cfg-bypass](../EXAMPLE%20PROJECT/RBX-cfg-bypass-main) memberikan referensi CFG bypass pasca-Hyperion:
+- Whitelist insertion + bitmap patch langsung, hindari `insert_set`.
+- Hanya relevan untuk manual map track, bukan loader track.
+- Hardcoded offsets per versi Roblox — tidak sustainable untuk loader.
+
 Implikasi arsitektural:
 
-- `dxgi.dll` masih layak diperlakukan sebagai kandidat dengan sinyal direct-load paling kuat,
-- `WebView2Loader.dll` naik menjadi kandidat riset nyata dengan contoh referensi yang cukup lengkap,
-- `version.dll` tetap baseline engineering, bukan baseline keyakinan target,
-- jika target akhir memang menggunakan DLL yang kontrak API-nya rumit, contoh WebView2 menunjukkan bahwa proxy sederhana tidak cukup—harus re-implement contract lengkap.
+- **`dxgi.dll` dan `dsound.dll` sekarang dua kandidat teratas** dengan sinyal string exact yang setara,
+- `dxgi.dll`: 720 export, cocok untuk proxy forwarding oleh `pe_patcher`,
+- `dsound.dll`: pola sideload terbukti di referensi 3LayersPersistence, jumlah export lebih manageable,
+- `d3d11.dll` (3 match) dan `d3d9.dll` (2 match) muncul di string scan tapi perlu verifikasi lebih lanjut,
+- `WebView2Loader.dll`: sinyal string 0, tapi file ada di folder — kemungkinan dynamic load, risiko implementasi tinggi,
+- `version.dll`: tetap baseline engineering, bukan baseline keyakinan target,
+- **Langkah kritis**: validasi import table RobloxPlayerBeta.exe dengan PE parser formal (`dumpbin /imports`).
 
 ### 4. `BloxHubLoader.exe`
 

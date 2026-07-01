@@ -5,7 +5,7 @@
 - Project overview: `../README.md`
 - Architecture details: `ARCHITECTURE.md`
 - Known bugs and risks: `BUGS.md`
-- Active checkpoint: `../checkpoints/CHECKPOINT_20260701_LOADER_IMPROVEMENT.md`
+- Active checkpoint: `../checkpoints/CHECKPOINT_20260702_PLANNING_L2.md`
 
 ## Planning Position
 
@@ -96,39 +96,56 @@ Strategi termurah untuk dikembangkan dari source yang sudah ada adalah:
 4. gunakan `BloxHubLoader.exe` sebagai laboratorium konsep patching langsung,
 5. bandingkan hasilnya dengan analisis Volt sebelum memilih strategi akhir.
 
-### Candidate target ranking saat ini
+### Candidate target ranking (updated 2026-07-02)
 
 Untuk fase planning, kandidat target DLL sekarang sebaiknya dibaca seperti ini:
 
-1. `dxgi.dll`
-   - punya sinyal paling konkret pada instalasi Roblox lokal saat ini,
-   - nama exact-nya muncul di `RobloxPlayerBeta.exe`,
-   - tetap perlu dijaga sebagai kandidat utama untuk investigasi lanjut.
-2. `WebView2Loader.dll`
+1. `dxgi.dll` **(~720 named exports, 978KB)**
+   - punya sinyal paling konkret pada instalasi Roblox lokal saat ini: nama exact muncul di `RobloxPlayerBeta.exe`,
+   - system DLL besar dengan banyak export, tapi baseline `pe_patcher` sudah mampu membangun forwarding untuk jumlah export sebanyak ini,
+   - perlu diverifikasi apakah ini import statis atau string sisa — string scan saja tidak cukup, butuh parser PE formal,
+   - jika terbukti, proxy forwarding 720 export adalah pekerjaan yang bisa ditangani `pe_patcher`.
+2. `dsound.dll` **(new — ditemukan di audit string scan 2026-07-02)**
+   - nama exact-nya juga muncul di `RobloxPlayerBeta.exe` — sinyal setara dengan `dxgi.dll`,
+   - ini adalah kandidat baru yang sebelumnya tidak masuk daftar riset,
+   - pola sideload `dsound.dll` sudah proven dari referensi `3LayersPersistence` (Spotify hijack),
+   - jika `dxgi.dll` ternyata bukan direct import, `dsound.dll` bisa menjadi kandidat alternatif dengan sinyal setara.
+3. `WebView2Loader.dll`
    - ada secara nyata di folder version Roblox lokal,
    - contoh proyek referensi `WebView2Loader-Injection` menunjukkan model `export emulation + loader contract re-implementation` yang lebih kaya daripada proxy biasa,
    - `RobloxPlayerBeta.exe` mengandung string WebView2 API seperti `CreateCoreWebView2Environment`,
-   - contoh menunjukkan pola: bukan cuma forward export, tetapi re-implement full contract loader agar host tetap berjalan normal sambil payload termuat,
    - tetapi belum ada bukti cukup bahwa EXE melakukan import statis exact ke `WebView2Loader.dll`,
-   - jika memang relevan, tingkat implementasinya lebih berat daripada proxy sederhana.
-3. `version.dll`
+   - jika memang relevan, tingkat implementasinya lebih berat daripada proxy sederhana (hanya 4 export tapi perlu re-implement contract lengkap).
+4. `version.dll`
    - sudah menjadi baseline implementasi `BloxHub.exe`,
    - tetap berguna untuk mengembangkan workflow loader,
-   - tetapi sinyal kecocokan target-nya lebih lemah.
+   - tetapi sinyal kecocokan target-nya paling lemah.
 
-**Temuan audit lokal:**
+**Temuan audit lokal (updated):**
 
-- Binary Roblox lokal tersedia di `c:\Users\Administrator\AppData\Local\Bloxstrap\Versions\version-1a951716f19e4638\`.
-- `WebView2Loader.dll` memang ada di folder tersebut.
-- String scan cepat menunjukkan: `dxgi.dll` exact string muncul di `RobloxPlayerBeta.exe`, tetapi `WebView2Loader.dll` exact string tidak ditemukan.
-- `RobloxPlayerBeta.exe` mengandung string umum seperti `WebView2`, `Loader`, `CreateCoreWebView2Environment`, menunjukkan kemungkinan dynamic load atau indirect reference.
+- Binary Roblox lokal: `c:\Users\Administrator\AppData\Local\Bloxstrap\Versions\version-1a951716f19e4638\`.
+- String scan exact pada `RobloxPlayerBeta.exe`:
+  - `dxgi.dll` — 1 match
+  - `dsound.dll` — 1 match
+  - `d3d11.dll` — 3 match
+  - `d3d9.dll` — 2 match
+  - `kernel32.dll` — 1 match
+  - `ntdll.dll` — 1 match
+  - `user32.dll` — 1 match
+  - `WebView2Loader.dll` — 0 match
+  - `version.dll` — 0 match
+  - `dinput8.dll` — 0 match
+  - `dbghelp.dll` — 0 match
+- `WebView2Loader.dll` sendiri memang ada di folder version tersebut.
+- `dxgi.dll` di System32 memiliki ~720 named exports (978KB file) — proxy forwarding dimungkinkan oleh `pe_patcher` yang sudah ada.
 
 Konsekuensi planning:
 
 - jangan menganggap target aktif saat ini sudah benar hanya karena loader bisa dibangun di atasnya,
-- jangan langsung pivot penuh ke `WebView2Loader.dll` sebelum ada bukti load path yang lebih kuat atau investigasi export-import mendalam,
-- pertahankan `dxgi.dll` dan `WebView2Loader.dll` sebagai dua kandidat riset utama di atas `version.dll`,
-- untuk `WebView2Loader.dll`, jika benar-benar dipakai, loader tidak bisa cuma proxy sederhana—harus re-implement contract loader seperti contoh referensi.
+- **`dxgi.dll` dan `dsound.dll` sekarang dua kandidat teratas** karena sama-sama punya sinyal exact string di binary target,
+- `WebView2Loader.dll` tetap kandidat riset menarik, tapi dengan caveat: implementasi lebih berat (export emulation, bukan proxy forwarding),
+- `version.dll` tetap baseline engineering — bukan baseline keyakinan target,
+- **langkah kritis berikutnya**: buktikan import path dengan PE parser formal (`dumpbin` / `pe-bear`) untuk memastikan mana yang static import vs dynamic load vs string coincidence.
 
 ## Active Milestones
 
@@ -157,7 +174,7 @@ Deliverables:
 - checkpoint loader improvement,
 - daftar gap teknis yang terurut.
 
-Status: `active`
+Status: `done`
 
 ### Milestone L2 - Preflight And Session Model
 
@@ -173,7 +190,115 @@ Deliverables:
 - daftar file dan artefak yang dicadangkan,
 - aturan rollback minimum.
 
-Status: `next`
+Status: `in_progress`
+
+#### L2 Design: Session State Machine
+
+State formal loader (satu instance per sesi):
+
+```text
+[IDLE]
+   |
+   v
+[PREFLIGHT] ──fail──> [FAILED]
+   |                    (log error, exit)
+   | success
+   v
+[INSTALLED] ──fail──> [ROLLBACK]
+   |                    (restore yang sudah di-copy, lalu exit)
+   | success
+   v
+[LAUNCHED] ──timeout/no-verify──> [RESTORE]
+   |                                (cleanup, flag incomplete session)
+   | verify ok
+   v
+[VERIFIED]
+   |
+   | (user exit / Roblox close)
+   v
+[RESTORED]  atau  [FAILED]  (jika restore gagal)
+```
+
+#### L2 Design: Per-Fase Detail
+
+**Fase PREFLIGHT:**
+- Validasi `RobloxPlayerBeta.exe` exists dan readable.
+- Validasi payload DLL (`version.dll` atau target lain) exists di folder loader.
+- Baca system DLL asli (e.g. `C:\Windows\System32\dxgi.dll`) — pastikan exists dan readable.
+- Hitung hash/checksum file target sebelum modifikasi (untuk verifikasi restore nanti).
+- Inventaris file yang akan dibuat/modifikasi:
+  - `<roblox_dir>\<target>.dll` (proxy hasil generate)
+  - `<roblox_dir>\<target>_orig.dll` (copy system DLL asli)
+- Tulis session file ke folder loader: `bloxhub_session.json` atau `.bloxhub_state` yang berisi:
+  - timestamp
+  - roblox_dir
+  - payload path
+  - target DLL name
+  - daftar file pre-existing di roblox_dir (untuk bedakan artefak baru vs bawaan)
+  - status: `preflight_ok`
+
+**Fase INSTALL:**
+- Jika `<target>_orig.dll` belum ada → copy dari system DLL asli.
+- Jika sudah ada (sisa sesi sebelumnya) → skip copy, tapi catat di log.
+- Generate proxy via `ConvertPayloadToProxy(...)`.
+- Tulis proxy ke `<roblox_dir>\<target>.dll`.
+- Update session file: status = `installed`.
+- Jika gagal di tengah → ROLLBACK: hapus file yang baru dibuat, pastikan tidak meninggalkan state kotor.
+
+**Fase LAUNCH:**
+- `CreateProcessW(RobloxPlayerBeta.exe)` dengan working directory = roblox_dir.
+- Simpan PID ke session file.
+- Start timer/monitor: tunggu sinyal verify atau timeout.
+- Update session file: status = `launched`, pid = <PID>.
+
+**Fase VERIFY:**
+- Mekanisme sinyal sukses dari payload (pilih salah satu, dokumentasikan):
+  - Opsi A: payload tulis file marker ke lokasi absolut (e.g. `C:\Users\Public\bloxhub_loaded.txt`) — paling sederhana, tapi sangat terdeteksi.
+  - Opsi B: payload kirim sinyal via named pipe / local socket ke loader — lebih stealth, perlu infrastructure tambahan.
+  - Opsi C: payload inject bukti ke memory/registry yang dibaca loader — variasi lain.
+- Default untuk prototype awal: **Opsi A**, karena fokus sekarang adalah membuktikan flow kerja, bukan stealth.
+- Timeout verify: misal 30 detik. Jika timeout, anggap session incomplete, tetap launch RESTORE.
+- Update session file: status = `verified`.
+
+**Fase RESTORE:**
+- Baca session file untuk daftar file yang dibuat.
+- Hapus `<target>.dll` (proxy kita).
+- Hapus `<target>_orig.dll` (copy system DLL) — hanya jika file ini dibuat oleh sesi KITA (bukan pre-existing dari sesi lain).
+- Verifikasi post-restore: bandingkan hash file kunci dengan hash preflight.
+- Update session file: status = `restored`.
+- Jika gagal hapus (file locked, dll) → status = `failed`, catat file yang masih tersisa.
+
+#### L2 Design: Session File Format
+
+File disimpan di folder executable loader: `<loader_dir>\bloxhub_session.dat`
+
+Format: binary kecil atau JSON plaintext. Untuk prototype, JSON lebih mudah dibaca:
+
+```json
+{
+  "session_id": "20260702-001",
+  "status": "installed",
+  "roblox_dir": "C:\\Users\\...\\Versions\\version-xxx",
+  "target_dll": "dxgi",
+  "payload_path": "C:\\...\\version.dll",
+  "system_dll_source": "C:\\Windows\\System32\\dxgi.dll",
+  "created_files": [
+    "dxgi.dll",
+    "dxgi_orig.dll"
+  ],
+  "pre_existing_files": ["RobloxPlayerBeta.exe", "WebView2Loader.dll", "..."],
+  "roblox_pid": 0,
+  "timestamp_start": "2026-07-02T12:00:00Z",
+  "verify_timeout_sec": 30
+}
+```
+
+#### L2 Design: Rollback Guarantees
+
+- Jika loader crash sebelum INSTALL selesai: tidak ada file yang tertulis → no-op.
+- Jika loader crash setelah INSTALL: saat restart, loader baca session file yang statusnya `installed` → auto-trigger RESTORE.
+- Jika Roblox crash: loader tetap bisa RESTORE karena session file independen dari proses Roblox.
+- Jika file terkunci: retry 3x dengan delay 1 detik, lalu catat sebagai `failed` dengan daftar file tersisa.
 
 ### Milestone L3 - Verify And Restore Hardening
 
@@ -215,13 +340,56 @@ Pilihan implementasi setelah L4:
 
 Status: `deferred until strategy decision`
 
+## Analisa Referensi Eksternal
+
+### Referensi 1: 3LayersPersistence (Maldev Academy)
+
+Proyek ini sangat relevan untuk arsitektur loader karena:
+
+- **`ConvertExecutableToDll` engine**: EXE membaca dirinya sendiri dari disk, lalu mem-patch menjadi proxy DLL yang meniru export DLL target. Alurnya:
+  - Set `IMAGE_FILE_DLL` di Characteristics
+  - Redirect `AddressOfEntryPoint` ke `DllMain`
+  - Ubah `Subsystem` ke `IMAGE_SUBSYSTEM_WINDOWS_GUI`
+  - Baca export DLL asli → bangun forwarded export table → append `.edata` section baru
+  - Stomp PE timestamp (30 hari lebih tua dari DLL asli)
+  - Stomp debug directory timestamp
+  - Update checksum
+
+- **Arsitektur ini MIRIP dengan `pe_patcher` BloxHub** tetapi lebih matang:
+  - BloxHub `pe_patcher`: sudah punya `ConvertPayloadToProxy()`, build export forwarding, update checksum, patch `.edata`
+  - 3LayersPersistence: menambahkan **timestamp stomping**, **debug directory patching**, dan **entry point redirect**
+  - **Kesimpulan**: `pe_patcher` bisa diperkaya dengan teknik timestamp stomping dan debug dir patching dari referensi ini
+
+- **3 layer persistence** yang didemonstrasikan:
+  - Layer 1: WMI permanent event subscription (admin required)
+  - Layer 2: COM hijacking via HKCU CLSID (no admin)
+  - Layer 3: DLL sideloading `dsound.dll` di folder Spotify (no admin)
+  - Untuk BloxHub, layer 3 paling relevan: membuktikan bahwa **pola sideload `dsound.dll` sudah proven di production malware**.
+
+- **Mutex guard + registry installation flag**: pola untuk mencegah payload jalan ganda dan skip re-installasi — relevan untuk session model L2.
+
+### Referensi 2: RBX-cfg-bypass
+
+- CFG bypass pasca-Hyperion yang mengklaim masih working di versi Roblox `version-2a06298afe3947ab`.
+- Teknik: whitelist insertion + bitmap patch langsung, hindari `insert_set`.
+- Menggunakan `CFG_PAGE_HASH_KEY` (`0xF7455279`) dan `CFG_VALIDATION_XOR` (`0xA9`) yang hardcoded.
+- **Nilai untuk BloxHub**: jika jalur manual map butuh CFG bypass yang lebih mutakhir, ini bisa jadi referensi. Tapi untuk loader track, tidak langsung relevan karena loader tidak menyentuh runtime injection.
+- **Red flag**: versi hardcoded offsets, repo sangat tipis, tidak jelas apakah masih working di versi Roblox terbaru.
+
+### Referensi 3: WebView2Loader-Injection (sudah dianalisa sebelumnya)
+
+- Pola `export emulation + loader contract re-implementation`.
+- Referensi arsitektural untuk kandidat target `WebView2Loader.dll`.
+
 ## Near-Term Work Queue
 
-1. Jadikan `BloxHub.exe` sebagai loader baseline resmi dalam semua dokumen.
-2. Petakan file yang disentuh loader dan perilaku restore saat ini.
-3. Pastikan checkpoint baru merangkum `apa yang sudah ada`, `apa yang belum ada`, dan `apa objective berikutnya`.
-4. Definisikan bagaimana keberhasilan loader akan diverifikasi.
-5. Baru setelah itu evaluasi strategi Volt-style secara lebih agresif.
+1. ~~Jadikan `BloxHub.exe` sebagai loader baseline resmi dalam semua dokumen.~~ (done)
+2. ~~Petakan file yang disentuh loader dan perilaku restore saat ini.~~ (done)
+3. ~~Pastikan checkpoint baru merangkum `apa yang sudah ada`, `apa yang belum ada`, dan `apa objective berikutnya`.~~ (done)
+4. **Selesaikan desain L2 Session Model** — state machine sudah didesain, tinggal diputuskan untuk coding.
+5. **Prioritas selanjutnya: buktikan import path target DLL** — perlu tool PE parser formal (`dumpbin` / `pe-bear`) untuk membaca import table `RobloxPlayerBeta.exe` secara proper, bukan cuma string scan.
+6. Definisikan bagaimana keberhasilan loader akan diverifikasi (bagian dari L3).
+7. Evaluasi strategi Volt-style setelah target DLL confirmed.
 
 ## Comparison Against Manual Map
 
@@ -257,6 +425,6 @@ Item-item ini tetap valid, tetapi baru masuk lagi setelah loader track memiliki 
 
 ## References
 
-- Active checkpoint: `../checkpoints/CHECKPOINT_20260701_LOADER_IMPROVEMENT.md`
+- Active checkpoint: `../checkpoints/CHECKPOINT_20260702_PLANNING_L2.md`
 - Bug list: `BUGS.md`
 - Architecture: `ARCHITECTURE.md`

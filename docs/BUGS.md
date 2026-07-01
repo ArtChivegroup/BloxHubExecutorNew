@@ -28,6 +28,10 @@ Deskripsi:
 - `BloxHub.exe` saat ini mengandalkan payload `version.dll`.
 - Hasil eksperimen historis menunjukkan target ini belum tentu ideal untuk Roblox.
 - Artinya, baseline loader saat ini masih valid sebagai platform pengembangan, tetapi target pemuatannya belum dianggap keputusan final.
+- Analisa string scan terbaru (2026-07-02): `dxgi.dll` (1 match) dan `dsound.dll` (1 match) muncul sebagai string exact di `RobloxPlayerBeta.exe`. `WebView2Loader.dll` (0 match). `d3d11.dll` (3 match) dan `d3d9.dll` (2 match) juga muncul.
+- `dxgi.dll` memiliki ~720 named exports — proxy forwarding bisa ditangani `pe_patcher`.
+- `dsound.dll` adalah kandidat baru, pola sideload-nya sudah proven di referensi 3LayersPersistence.
+- **Caveat**: string scan bukan bukti final import statis. Butuh verifikasi dengan PE parser formal.
 
 Dampak:
 
@@ -37,7 +41,10 @@ Dampak:
 Kebutuhan:
 
 - dokumentasikan target DLL yang dipakai setiap eksperimen,
-- jadikan pemilihan target sebagai keputusan eksplisit, bukan asumsi tersembunyi.
+- jadikan pemilihan target sebagai keputusan eksplisit, bukan asumsi tersembunyi,
+- bedakan `baseline implementasi` dari `baseline keyakinan target`,
+- pertahankan shortlist aktif: `dxgi.dll`, `dsound.dll`, `WebView2Loader.dll`, lalu `version.dll`,
+- **langkah kritis**: verifikasi import table dengan `dumpbin /imports`.
 
 ### 2. Restore loader belum crash-safe
 
@@ -239,5 +246,5 @@ Catatan: sudah ada error handling lebih baik, tetapi restore loader tetap belum 
 
 ## Referensi
 
-- Active checkpoint: `../checkpoints/CHECKPOINT_20260701_LOADER_IMPROVEMENT.md`
+- Active checkpoint: `../checkpoints/CHECKPOINT_20260702_PLANNING_L2.md`
 - Planning: `PLANNING.md`
