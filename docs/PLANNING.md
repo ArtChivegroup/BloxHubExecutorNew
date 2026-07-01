@@ -96,6 +96,40 @@ Strategi termurah untuk dikembangkan dari source yang sudah ada adalah:
 4. gunakan `BloxHubLoader.exe` sebagai laboratorium konsep patching langsung,
 5. bandingkan hasilnya dengan analisis Volt sebelum memilih strategi akhir.
 
+### Candidate target ranking saat ini
+
+Untuk fase planning, kandidat target DLL sekarang sebaiknya dibaca seperti ini:
+
+1. `dxgi.dll`
+   - punya sinyal paling konkret pada instalasi Roblox lokal saat ini,
+   - nama exact-nya muncul di `RobloxPlayerBeta.exe`,
+   - tetap perlu dijaga sebagai kandidat utama untuk investigasi lanjut.
+2. `WebView2Loader.dll`
+   - ada secara nyata di folder version Roblox lokal,
+   - contoh proyek referensi `WebView2Loader-Injection` menunjukkan model `export emulation + loader contract re-implementation` yang lebih kaya daripada proxy biasa,
+   - `RobloxPlayerBeta.exe` mengandung string WebView2 API seperti `CreateCoreWebView2Environment`,
+   - contoh menunjukkan pola: bukan cuma forward export, tetapi re-implement full contract loader agar host tetap berjalan normal sambil payload termuat,
+   - tetapi belum ada bukti cukup bahwa EXE melakukan import statis exact ke `WebView2Loader.dll`,
+   - jika memang relevan, tingkat implementasinya lebih berat daripada proxy sederhana.
+3. `version.dll`
+   - sudah menjadi baseline implementasi `BloxHub.exe`,
+   - tetap berguna untuk mengembangkan workflow loader,
+   - tetapi sinyal kecocokan target-nya lebih lemah.
+
+**Temuan audit lokal:**
+
+- Binary Roblox lokal tersedia di `c:\Users\Administrator\AppData\Local\Bloxstrap\Versions\version-1a951716f19e4638\`.
+- `WebView2Loader.dll` memang ada di folder tersebut.
+- String scan cepat menunjukkan: `dxgi.dll` exact string muncul di `RobloxPlayerBeta.exe`, tetapi `WebView2Loader.dll` exact string tidak ditemukan.
+- `RobloxPlayerBeta.exe` mengandung string umum seperti `WebView2`, `Loader`, `CreateCoreWebView2Environment`, menunjukkan kemungkinan dynamic load atau indirect reference.
+
+Konsekuensi planning:
+
+- jangan menganggap target aktif saat ini sudah benar hanya karena loader bisa dibangun di atasnya,
+- jangan langsung pivot penuh ke `WebView2Loader.dll` sebelum ada bukti load path yang lebih kuat atau investigasi export-import mendalam,
+- pertahankan `dxgi.dll` dan `WebView2Loader.dll` sebagai dua kandidat riset utama di atas `version.dll`,
+- untuk `WebView2Loader.dll`, jika benar-benar dipakai, loader tidak bisa cuma proxy sederhana—harus re-implement contract loader seperti contoh referensi.
+
 ## Active Milestones
 
 ### Milestone L0 - Documentation Reset

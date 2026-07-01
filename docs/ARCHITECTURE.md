@@ -111,6 +111,38 @@ Catatan penting:
 - jalur ini adalah baseline implementasi yang ada sekarang,
 - bukan bukti bahwa `version.dll` sudah pasti target terbaik untuk loader akhir.
 
+### 3a. Kandidat target loader yang sedang dianalisis
+
+Hasil analisa terbaru menambah konteks penting untuk pemilihan target DLL:
+
+- `dxgi.dll` memiliki sinyal paling konkret pada instalasi Roblox lokal saat ini karena nama exact-nya muncul di `RobloxPlayerBeta.exe`.
+- `WebView2Loader.dll` juga ada secara nyata di folder version Roblox lokal, dan `RobloxPlayerBeta.exe` mengandung string WebView2 seperti `CreateCoreWebView2Environment`.
+- Namun, analisa cepat ini belum membuktikan bahwa `RobloxPlayerBeta.exe` melakukan import statis exact ke `WebView2Loader.dll`.
+- `version.dll` tetap berguna sebagai baseline implementasi loader yang sudah ada, tetapi bukti target-nya lebih lemah daripada `dxgi.dll`.
+
+**Referensi teknis WebView2Loader-style hijack:**
+
+Contoh [WebView2Loader-Injection](../EXAMPLE%20PROJECT/WebView2Loader-Injection-main) memberikan referensi pola `DLL hijack via export emulation`:
+
+- DLL shim mengganti `WebView2Loader.dll` asli yang dipakai host,
+- tetap mengimplementasikan API WebView2 sehingga aplikasi tidak crash,
+- implementasinya cukup kompleks: meniru loader contract lengkap dengan pencarian path runtime, bukan cuma forward sederhana,
+- payload dapat berjalan via `DllMain` sambil tetap melayani panggilan API host.
+
+Pola ini relevan untuk loader:
+
+- bukan hanya proxy export yang pasif,
+- tetapi `re-implement loader contract host`, sehingga shim tidak hanya meneruskan, tetapi benar-benar menggantikan logika loader asli,
+- cocok jika target memang memuat DLL tersebut secara statis atau dinamis,
+- risiko: lebih sulit dikembangkan daripada proxy sederhana, karena harus memahami contract lengkap DLL target.
+
+Implikasi arsitektural:
+
+- `dxgi.dll` masih layak diperlakukan sebagai kandidat dengan sinyal direct-load paling kuat,
+- `WebView2Loader.dll` naik menjadi kandidat riset nyata dengan contoh referensi yang cukup lengkap,
+- `version.dll` tetap baseline engineering, bukan baseline keyakinan target,
+- jika target akhir memang menggunakan DLL yang kontrak API-nya rumit, contoh WebView2 menunjukkan bahwa proxy sederhana tidak cukup—harus re-implement contract lengkap.
+
 ### 4. `BloxHubLoader.exe`
 
 PoC lama untuk patch import table langsung ke executable target.
