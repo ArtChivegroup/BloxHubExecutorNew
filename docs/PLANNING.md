@@ -1,6 +1,6 @@
 # Planning — Saat Kamu Kembali
 
-**Kondisi saat istirahat:** Juli 2026 — inject stomp stabil (tidak crash)  
+**Kondisi saat istirahat:** 2 Juli 2026 — **Fase 1 SELESAI!**  
 **Baca status lengkap:** [`STATUS.md`](STATUS.md)
 
 ---
@@ -11,21 +11,11 @@
 - Mode `--inject` di `BloxHub.exe`  
 - **Injector module stomp** (Riviera-style, tanpa driver)  
 - **`BloxHubInjector.exe`** — manual inject, tunggu game loaded  
-- Fix crash: skip TLS/SEH, DllMain sync `CreateRemoteThread`  
-- Uji manual: 2× inject OK, `DllMain returned`  
+- Fix crash: skip TLS/SEH, DllMain via **IoCompletion async**  
+- Uji manual: ✅ `[BloxHub] DllMain PROCESS_ATTACH - SUCCESS!` di **DebugView**  
 - Offset game → `version-5cf2272675e145f5`  
 - Dokumentasi + [`TODO.md`](TODO.md)  
-
----
-
-## P0 — Tutup Fase 1 (Step 1)
-
-Checklist: [`TODO.md`](TODO.md) Step 1.
-
-**Sudah:** tidak crash, `DllMain returned`.  
-**Sisa:** konfirmasi console **atau** terima Step 4 sebagai bukti alternatif.
-
-**Definisi selesai Step 1:** Console muncul **atau** file bukti Step 4 + Roblox tidak crash.
+- **Fase 1 SELESAI!**
 
 ---
 

@@ -6,21 +6,39 @@ Windows x64 loader research project for Roblox (Bloxstrap). Primary path: **modu
 
 ---
 
+## 🎉 Fase 1 SELESAI!
+
+Bukti: **`[BloxHub] DllMain PROCESS_ATTACH - SUCCESS!`** di **DebugView** (Capture Global Win32).
+
+---
+
 ## Quick start
 
+### 1. Install DebugView
+Download DebugView (Sysinternals): https://learn.microsoft.com/id-id/sysinternals/downloads/debugview
+
+### 2. Setup DebugView
+- Jalankan DebugView **as Administrator**
+- Centang: **Capture → Capture Global Win32**
+
+### 3. Build & Inject
 ```cmd
 cmake -S . -B build
 cmake --build build --config Release
 cd build\bin\Release
 
-REM 1. Open Roblox, join a game
-REM 2. Run as Administrator:
+REM 1. Buka Roblox, masuk game
+REM 2. Jalankan as Administrator:
 BloxHubInjector.exe
 ```
 
-Roblox version must match `include/offsets.hpp` (`offsets::roblox_version`).
+Roblox version harus sesuai dengan `include/offsets.hpp` (`offsets::roblox_version`).
 
-Expected: `DllMain returned`, `Injection OK — Roblox masih hidup`, no crash.
+### 4. Cek DebugView!
+Berhasil jika terlihat pesan:
+```text
+[BloxHub] DllMain PROCESS_ATTACH - SUCCESS!
+```
 
 ---
 
@@ -30,43 +48,43 @@ Expected: `DllMain returned`, `Injection OK — Roblox masih hidup`, no crash.
 BloxHubExecutorNew/
 ├── CMakeLists.txt
 ├── README.md
-├── docs/                 # Documentation
+├── docs/                 # Dokumentasi
 ├── include/
 │   ├── injector.hpp
-│   └── offsets.hpp       # Active game offsets (from offsets/raw)
-├── offsets/raw/          # roblox-dumper output
+│   └── offsets.hpp       # Offset game aktif (dari offsets/raw)
+├── offsets/raw/          # Output roblox-dumper
 ├── src/
-│   ├── BloxHub.cpp       # Main loader
+│   ├── BloxHub.cpp       # Loader utama
 │   ├── BloxHubInjector.cpp
 │   ├── injector/         # stomp_inject + tp_execute
-│   └── internal/         # pe_patcher, payloads
-└── checkpoints/          # Session notes (CHECKPOINT_CURRENT.md)
+│   └── internal/         # pe_patcher, payload
+└── checkpoints/          # Catatan sesi (CHECKPOINT_CURRENT.md)
 ```
 
 ---
 
 ## Build targets
 
-| Target | Output | Role |
+| Target | Output | Peran |
 |--------|--------|------|
-| `BloxHub` | `BloxHub.exe` | Launcher: sideload or `--inject` |
-| `BloxHubInjector` | `BloxHubInjector.exe` | **Manual inject** (recommended test path) |
-| `BloxHubInternal` | `BloxHubInternal.dll` | Stomp payload |
-| `proxy_payload` | `version.dll` | Sideload proxy source |
+| `BloxHub` | `BloxHub.exe` | Launcher: sideload atau `--inject` |
+| `BloxHubInjector` | `BloxHubInjector.exe` | **Inject manual** (workflow rekomendasi) |
+| `BloxHubInternal` | `BloxHubInternal.dll` | Payload stomp |
+| `proxy_payload` | `version.dll` | Source proxy sideload |
 
 ---
 
-## Documentation
+## Documentation (Bahasa Indonesia)
 
-| Doc | Purpose |
-|-----|---------|
-| [`docs/STATUS.md`](docs/STATUS.md) | Current project state |
-| [`docs/TODO.md`](docs/TODO.md) | Step-by-step checklist (one step per session) |
-| [`docs/USAGE.md`](docs/USAGE.md) | Commands & troubleshooting |
-| [`docs/BUILD.md`](docs/BUILD.md) | Build & offset updates |
-| [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Components & flows |
-| [`docs/BUGS.md`](docs/BUGS.md) | Known issues |
-| [`docs/PLANNING.md`](docs/PLANNING.md) | Next priorities |
+| Dokumen | Tujuan |
+|---------|--------|
+| [`docs/STATUS.md`](docs/STATUS.md) | Status proyek saat ini |
+| [`docs/TODO.md`](docs/TODO.md) | Checklist langkah demi langkah (satu langkah per sesi) |
+| [`docs/USAGE.md`](docs/USAGE.md) | Perintah & troubleshooting |
+| [`docs/BUILD.md`](docs/BUILD.md) | Build & update offset |
+| [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Komponen & alur |
+| [`docs/BUGS.md`](docs/BUGS.md) | Masalah yang diketahui |
+| [`docs/PLANNING.md`](docs/PLANNING.md) | Prioritas selanjutnya |
 
 ---
 
@@ -74,22 +92,23 @@ BloxHubExecutorNew/
 
 | Item | Status |
 |------|--------|
-| Module stomp inject | ✅ stable (2× no crash, `DllMain returned`) |
-| Console proof (Step 1) | 🔄 not confirmed on screen |
-| `BloxHubInjector.exe` manual | ✅ recommended workflow |
-| `BloxHub.exe --inject` | ⏸ use manual inject first |
-| Sideload `dxgi.dll` | ❌ blocked by Hyperion |
-| Offsets | `version-5cf2272675e145f5` |
+| Module stomp inject | ✅ **Fase 1 SELESAI! |
+| Bukti `DllMain` | ✅ Terlihat di DebugView |
+| `BloxHubInjector.exe` manual | ✅ workflow rekomendasi |
+| `BloxHub.exe --inject` | ⏸ gunakan manual dulu |
+| Sideload `dxgi.dll` | ❌ diblokir Hyperion |
+| Offset | `version-5cf2272675e145f5` |
 
-Details: [`docs/STATUS.md`](docs/STATUS.md)
+Detail: [`docs/STATUS.md`](docs/STATUS.md)
 
 ---
 
-## Update offsets after Roblox patch
+## Update offset setelah Roblox patch
 
 ```cmd
 copy /Y offsets\raw\offsets.h include\offsets.hpp
 cmake --build build --config Release
 ```
 
-See [`docs/BUILD.md`](docs/BUILD.md).
+Lihat [`docs/BUILD.md`](docs/BUILD.md).
+
