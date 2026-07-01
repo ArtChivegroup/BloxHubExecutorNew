@@ -1,6 +1,20 @@
 #include <Windows.h>
 
-// Helper: menulis string ke file
+static void WriteVerifyMarker()
+{
+    char path[MAX_PATH] = {};
+    GetTempPathA(MAX_PATH, path);
+    strcat_s(path, "bloxhub_payload_loaded.txt");
+
+    HANDLE hFile = CreateFileA(path, GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
+    if (hFile == INVALID_HANDLE_VALUE) return;
+
+    const char* msg = "BloxHub injected";
+    DWORD written = 0;
+    WriteFile(hFile, msg, (DWORD)strlen(msg), &written, nullptr);
+    CloseHandle(hFile);
+}
+
 void WriteLog(const char* message) {
     char tempPath[MAX_PATH];
     char logPath[MAX_PATH];
@@ -31,6 +45,7 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserv
     switch (ul_reason_for_call) {
         case DLL_PROCESS_ATTACH:
             WriteLog("[BloxHub] DLL_PROCESS_ATTACH called!\n");
+            WriteVerifyMarker();
             break;
         case DLL_THREAD_ATTACH:
         case DLL_THREAD_DETACH:

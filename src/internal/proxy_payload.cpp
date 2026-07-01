@@ -20,23 +20,46 @@ void WriteLog(const char* message)
     fclose(file);
 }
 
+bool WriteMarkerFile(const wchar_t* path)
+{
+    HANDLE hFile = CreateFileW(
+        path, GENERIC_WRITE, 0, NULL,
+        CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+    if (hFile == INVALID_HANDLE_VALUE) return false;
+
+    const char* msg = "BloxHub payload loaded";
+    DWORD written = 0;
+    WriteFile(hFile, msg, (DWORD)strlen(msg), &written, NULL);
+    CloseHandle(hFile);
+    return true;
+}
+
 void WriteVerifyMarker(HMODULE module)
 {
     wchar_t my_path[MAX_PATH] = {};
     GetModuleFileNameW(module, my_path, MAX_PATH);
-    fs::path dll_path(my_path);
-    fs::path marker = dll_path.parent_path() / L"bloxhub_loaded.txt";
+    fs::path marker = fs::path(my_path).parent_path() / L"bloxhub_loaded.txt";
 
-    HANDLE hFile = CreateFileW(
-        marker.wstring().c_str(),
-        GENERIC_WRITE, 0, NULL,
-        CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
-    if (hFile != INVALID_HANDLE_VALUE)
+    if (WriteMarkerFile(marker.wstring().c_str()))
     {
-        const char* msg = "BloxHub payload loaded";
-        DWORD written = 0;
-        WriteFile(hFile, msg, (DWORD)strlen(msg), &written, NULL);
-        CloseHandle(hFile);
+        char log[512];
+        sprintf_s(log, "Verify marker written: %ls", marker.c_str());
+        WriteLog(log);
+        return;
+    }
+
+    wchar_t temp[MAX_PATH] = {};
+    GetTempPathW(MAX_PATH, temp);
+    fs::path fallback = fs::path(temp) / L"bloxhub_payload_loaded.txt";
+    if (WriteMarkerFile(fallback.wstring().c_str()))
+    {
+        char log[512];
+        sprintf_s(log, "Verify marker fallback: %ls", fallback.c_str());
+        WriteLog(log);
+    }
+    else
+    {
+        WriteLog("Verify marker write failed (both locations)");
     }
 }
 
@@ -56,59 +79,119 @@ void WipePeHeader(HMODULE module)
     VirtualProtect(module, 0x1000, old_protect, &ignored);
 }
 
+void LogWin32Error(const char* prefix, DWORD err)
+{
+    char msg[320];
+    sprintf_s(msg, "%s Error: %lu", prefix, err);
+    WriteLog(msg);
+
+    wchar_t* buf = nullptr;
+    DWORD n = FormatMessageW(
+        FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
+        NULL, err, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+        (LPWSTR)&buf, 0, NULL);
+    if (n && buf)
+    {
+        char narrow[512] = {};
+        WideCharToMultiByte(CP_UTF8, 0, buf, -1, narrow, sizeof(narrow) - 1, NULL, NULL);
+        WriteLog(narrow);
+        LocalFree(buf);
+    }
+}
+
+bool GetForwardDllPath(HMODULE module, wchar_t* out, size_t out_chars)
+{
+    wchar_t my_path[MAX_PATH] = {};
+    if (!GetModuleFileNameW(module, my_path, MAX_PATH)) return false;
+
+    fs::path dll_path(my_path);
+    fs::path full = dll_path.parent_path() / (dll_path.stem().wstring() + L"_orig" + dll_path.extension().wstring());
+    wcsncpy_s(out, out_chars, full.wstring().c_str(), _TRUNCATE);
+    return true;
+}
+
 HMODULE g_forward_module = nullptr;
 
-wchar_t* GetForwardDllName(HMODULE module)
+struct InitCtx
 {
-    static wchar_t forward_name[MAX_PATH] = {};
-    if (forward_name[0]) return forward_name;
+    HMODULE module;
+};
 
-    wchar_t my_path[MAX_PATH] = {};
-    GetModuleFileNameW(module, my_path, MAX_PATH);
-    fs::path dll_path(my_path);
-    std::wstring stem = dll_path.stem().wstring();
-    std::wstring ext = dll_path.extension().wstring();
-    std::wstring fwd = stem + L"_orig" + ext;
+DWORD WINAPI InitThread(LPVOID param)
+{
+    auto* ctx = static_cast<InitCtx*>(param);
+    HMODULE module = ctx->module;
+    HeapFree(GetProcessHeap(), 0, ctx);
 
-    wcscpy_s(forward_name, fwd.c_str());
-    return forward_name;
+    wchar_t forward_path[MAX_PATH] = {};
+    if (!GetForwardDllPath(module, forward_path, MAX_PATH))
+    {
+        WriteLog("Failed to resolve forward DLL path");
+        return 1;
+    }
+
+    char forward_info[512];
+    sprintf_s(forward_info, "Loading forward DLL: %ls", forward_path);
+    WriteLog(forward_info);
+
+    if (GetFileAttributesW(forward_path) == INVALID_FILE_ATTRIBUTES)
+    {
+        char err_msg[512];
+        sprintf_s(err_msg, "Forward DLL missing on disk: %ls", forward_path);
+        WriteLog(err_msg);
+        LogWin32Error("GetFileAttributes", GetLastError());
+        return 1;
+    }
+
+    g_forward_module = LoadLibraryExW(forward_path, NULL, LOAD_WITH_ALTERED_SEARCH_PATH);
+    if (!g_forward_module)
+    {
+        char err_msg[512];
+        sprintf_s(err_msg, "Failed to load %ls", forward_path);
+        WriteLog(err_msg);
+        LogWin32Error("LoadLibraryEx", GetLastError());
+        return 1;
+    }
+
+    WriteLog("Forward DLL loaded successfully!");
+    WipePeHeader(module);
+    return 0;
 }
 
 } // namespace
 
 BOOL APIENTRY DllMain(HMODULE module, DWORD reason, LPVOID)
 {
-    WriteLog("proxy payload: DllMain started!");
-
     if (reason != DLL_PROCESS_ATTACH)
         return TRUE;
 
     DisableThreadLibraryCalls(module);
+    WriteLog("proxy payload: DllMain started!");
 
-    wchar_t* forward_dll = GetForwardDllName(module);
-    char forward_info[512];
-    sprintf_s(forward_info, "Loading forward DLL: %ls", forward_dll);
-    WriteLog(forward_info);
-
-    g_forward_module = LoadLibraryW(forward_dll);
-    if (!g_forward_module)
-    {
-        char err_msg[256];
-        sprintf_s(err_msg, "Failed to load %ls! Error: %lu", forward_dll, GetLastError());
-        WriteLog(err_msg);
-        return FALSE;
-    }
-    WriteLog("Forward DLL loaded successfully!");
-
-    if (IsRobloxProcess())
-    {
-        WriteLog("Proxy payload: Loaded into Roblox!");
-        WriteVerifyMarker(module);
-        WipePeHeader(module);
-    }
-    else
+    if (!IsRobloxProcess())
     {
         WriteLog("Proxy payload: Loaded outside Roblox.");
+        return TRUE;
     }
+
+    WriteLog("Proxy payload: Loaded into Roblox!");
+    WriteVerifyMarker(module);
+
+    auto* ctx = static_cast<InitCtx*>(HeapAlloc(GetProcessHeap(), 0, sizeof(InitCtx)));
+    if (!ctx)
+    {
+        WriteLog("Init thread alloc failed");
+        return TRUE;
+    }
+    ctx->module = module;
+
+    HANDLE hThread = CreateThread(NULL, 0, InitThread, ctx, 0, NULL);
+    if (!hThread)
+    {
+        WriteLog("Init thread create failed");
+        HeapFree(GetProcessHeap(), 0, ctx);
+        return TRUE;
+    }
+    CloseHandle(hThread);
     return TRUE;
 }

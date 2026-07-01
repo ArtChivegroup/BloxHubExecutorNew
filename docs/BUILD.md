@@ -1,154 +1,108 @@
 # Cara Build
 
-## Scope
-
-Dokumen ini menjelaskan build baseline untuk seluruh artefak proyek, dengan fokus penggunaan akhir tetap pada `loader-first track`.
-
 ## Prasyarat
 
-- Visual Studio 2022 dengan workload `Desktop development with C++`
-- CMake 3.20 atau lebih baru
+- Visual Studio 2022 — workload **Desktop development with C++**
+- CMake 3.20+
 - Windows SDK
-- Environment Windows x64
+- x64
 
-## Toolchain Summary
+---
 
-Proyek menggunakan:
-
-- `CMake` sebagai build system,
-- `C++20`,
-- `pe_bliss` dan `vendor/pe` sebagai dependency vendor di dalam repo.
-
-## Langkah Build
-
-### 1. Buka terminal developer
-
-Gunakan `Developer Command Prompt for VS 2022` atau terminal lain yang sudah memuat toolchain MSVC.
-
-### 2. Masuk ke root proyek
+## Build Pertama
 
 ```cmd
 cd "c:\Users\Administrator\Downloads\BLOXHUB NEW EXEC\BloxHubExecutorNew"
-```
-
-### 3. Buat direktori build
-
-```cmd
 mkdir build
 cd build
-```
-
-### 4. Generate project files
-
-```cmd
 cmake ..
-```
-
-### 5. Build konfigurasi Release
-
-```cmd
 cmake --build . --config Release
 ```
 
-Jika perlu Debug:
+Atau dari root (sudah ada folder `build`):
 
 ```cmd
-cmake --build . --config Debug
+cmake --build build --config Release
 ```
 
-## Artefak Yang Dihasilkan
+---
 
-Secara umum, output runtime berada di:
+## Output
 
-```text
-build\bin\<Config>\
 ```
-
-Target utama yang didefinisikan di `CMakeLists.txt`:
-
-| Target | Jenis | Peran |
-|--------|------|-------|
-| `BloxHub` | EXE | Prototype loader modern |
-| `BloxHubLoader` | EXE | PoC patch-import langsung ke target PE |
-| `BloxHubInjector` | EXE | Injector manual map + CFG bypass |
-| `BloxHubInternal` | DLL | Payload legacy untuk track manual map |
-| `version` | DLL | Payload/proxy basis (generic, self-derives forward name) |
-| `TestProxy` | EXE | Utility test legacy |
-
-Contoh isi folder output `Release`:
-
-```text
 build\bin\Release\
 ├── BloxHub.exe
-├── BloxHubLoader.exe
 ├── BloxHubInjector.exe
 ├── BloxHubInternal.dll
-├── version.dll
-└── TestProxy.exe
+└── version.dll
 ```
 
-## Build Notes Per Track
+**Untuk inject:** butuh `BloxHub.exe` + `BloxHubInternal.dll` di folder yang sama.  
+**Untuk sideload:** butuh `BloxHub.exe` + `version.dll`.
 
-### Loader track
+---
 
-Untuk eksperimen loader aktif, artefak minimum yang biasanya relevan:
+## Rebuild Setelah Ubah Kode
 
-- `BloxHub.exe`
-- `version.dll`
+```cmd
+cmake --build build --config Release
+```
 
-### PE patch PoC
+Rebuild satu target:
 
-Untuk eksperimen patch-import langsung:
+```cmd
+cmake --build build --config Release --target BloxHub
+```
 
-- `BloxHubLoader.exe`
-- `BloxHubInternal.dll`
+---
 
-### Manual map track
+## Update Offset (Setelah Roblox Patch)
 
-Untuk eksperimen injector sekunder:
+Offset game ada di `include/offsets.hpp`. Sumber mentah: `offsets/raw/offsets.h`.
 
-- `BloxHubInjector.exe`
-- `BloxHubInternal.dll`
+```cmd
+copy /Y offsets\raw\offsets.h include\offsets.hpp
+```
 
-## Verifikasi Build Minimum
+**Penting:** Setelah copy, cek akhir file masih ada namespace `CfgBypass`:
 
-Setelah build selesai, cek bahwa:
+```cpp
+namespace CfgBypass {
+    inline constexpr uintptr_t BitmapPtr = 0x0;
+    inline constexpr uintptr_t Whitelist = 0x0;
+    inline constexpr uintptr_t InsertSet = 0x0;
+}
+```
 
-- `BloxHub.exe` terbentuk,
-- `version.dll` terbentuk,
-- `BloxHubLoader.exe` dan `BloxHubInjector.exe` juga tersedia bila ingin pembanding.
+Kalau hilang, tambahkan manual. Lalu rebuild.
 
-Build sukses hanya berarti artefak berhasil dikompilasi. Itu tidak sama dengan validasi runtime terhadap Roblox atau Hyperion.
+Versi aktif saat ini: `version-5cf2272675e145f5` (lihat baris `roblox_version` di header).
 
-## Troubleshooting
+---
 
-### CMake tidak ditemukan
+## Target CMake
 
-Pastikan:
+| Target | Output |
+|--------|--------|
+| `BloxHub` | `BloxHub.exe` |
+| `BloxHubInjector` | `BloxHubInjector.exe` |
+| `BloxHubInternal` | `BloxHubInternal.dll` |
+| `proxy_payload` | `version.dll` |
 
-- CMake sudah terpasang,
-- executable `cmake` tersedia di `PATH`.
+---
 
-### Error Windows SDK atau toolchain MSVC
+## Catatan
 
-Pastikan:
+- **Build sukses ≠ inject sukses** di Roblox  
+- Test runtime butuh Admin + versi Roblox yang cocok  
+- Lihat [`STATUS.md`](STATUS.md) untuk interpretasi hasil uji  
 
-- workload C++ sudah terpasang di Visual Studio Installer,
-- Windows SDK tersedia,
-- build dijalankan dari terminal developer yang benar.
+---
 
-### Target output tidak muncul semua
+## Troubleshooting Build
 
-Periksa:
-
-- konfigurasi build yang dipakai (`Release` vs `Debug`),
-- apakah build berhenti di tengah karena error kompilasi,
-- apakah file output dicari di `build\bin\<Config>\`.
-
-### Build sukses tetapi `BloxHub.exe` tidak bisa dipakai untuk uji loader
-
-Periksa:
-
-- `version.dll` tersedia di folder output yang sama,
-- path target Roblox diberikan dengan benar saat menjalankan loader,
-- jangan menganggap keberhasilan build sebagai bukti keberhasilan strategi loader.
+| Masalah | Solusi |
+|---------|--------|
+| CMake generator error | Hapus `build\CMakeCache.txt`, jalankan `cmake ..` lagi |
+| MSVC tidak ketemu | Pakai **Developer Command Prompt for VS 2022** |
+| Output tidak ada | Cek `build\bin\Release\`, bukan root project |

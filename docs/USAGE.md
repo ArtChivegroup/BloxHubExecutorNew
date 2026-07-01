@@ -1,187 +1,166 @@
 # Cara Penggunaan
 
-## Posisi Dokumen
+**Baca dulu:** [`STATUS.md`](STATUS.md) untuk konteks kondisi proyek saat ini.
 
-Dokumen ini sekarang mengikuti strategi `loader-first`.
+---
 
-Urutan penggunaan yang benar:
+## Prasyarat
 
-1. gunakan `BloxHub.exe` sebagai baseline loader utama,
-2. gunakan `BloxHubLoader.exe` hanya untuk eksperimen patch-import langsung,
-3. gunakan `BloxHubInjector.exe` hanya sebagai track riset pembanding.
+- Windows x64  
+- Build Release di `build\bin\Release\`  
+- **CMD/PowerShell as Administrator** (untuk inject)  
+- Path Roblox Bloxstrap **sama versi** dengan `offsets::roblox_version` di `include/offsets.hpp`  
+- Semua artefak (`BloxHub.exe`, `BloxHubInternal.dll`, `version.dll`) di folder yang sama  
 
-## Workflow Utama - `BloxHub.exe`
+---
 
-`BloxHub.exe` adalah executable yang saat ini paling mewakili arah proyek.
+## Mode 1 — Inject (Disarankan)
 
-Flow aktualnya:
-
-1. terima path `RobloxPlayerBeta.exe` atau folder version Roblox,
-2. cari payload `version.dll` di folder executable loader,
-3. salin `System32\version.dll` menjadi `version_orig.dll` ke folder target,
-4. generate proxy DLL baru lewat `pe_patcher`,
-5. tulis proxy `version.dll` ke folder Roblox,
-6. launch Roblox,
-7. tunggu input user,
-8. hapus artefak sementara saat cleanup.
-
-### Menjalankan `BloxHub.exe`
-
-1. Buka terminal di folder output build:
+Tidak memodifikasi file di folder Roblox.
 
 ```cmd
-cd "C:\Users\Administrator\Downloads\BLOXHUB NEW EXEC\BloxHubExecutorNew\build\bin\Release"
+cd build\bin\Release
+
+BloxHub.exe "C:\Users\Administrator\AppData\Local\Bloxstrap\Versions\version-5cf2272675e145f5" --inject
 ```
 
-2. Jalankan loader dengan path executable atau folder version:
+Atau path langsung ke exe:
 
 ```cmd
-BloxHub.exe "C:\Users\Administrator\AppData\Local\Bloxstrap\Versions\version-xxxxxxxxxxxxxxxx\RobloxPlayerBeta.exe"
+BloxHub.exe "C:\...\version-5cf2272675e145f5\RobloxPlayerBeta.exe" --inject
 ```
 
-Atau:
+### Alur yang diharapkan
+
+```text
+[PREFLIGHT] OK
+[LAUNCH] Roblox launched (PID: ...)
+[+] Roblox game process ready (PID: ...)   ← bisa sama atau beda dari launch PID
+[*] Allocated remote image at: ...
+[*] DLL written to remote process
+[*] Executing CFG bypass ...
+[+] BloxHubInit executed successfully!
+[INJECT] OK
+[VERIFY] Payload loaded successfully!      ← ideal; saat ini sering timeout
+```
+
+### Cek bukti inject
 
 ```cmd
-BloxHub.exe "C:\Users\Administrator\AppData\Local\Bloxstrap\Versions\version-xxxxxxxxxxxxxxxx"
+type %TEMP%\bloxhub_test.txt
+type %TEMP%\bloxhub_payload_loaded.txt
+
+REM Kalau kosong, cari di seluruh AppData (Roblox sandbox temp):
+dir /s /b %USERPROFILE%\AppData\bloxhub_test.txt
 ```
 
-3. Pastikan file `version.dll` payload berada di folder yang sama dengan `BloxHub.exe`.
+### Alternatif: injector standalone
 
-4. Loader akan:
-
-- menampilkan direktori Roblox yang dipakai,
-- mengecek keberadaan payload,
-- membuat `version_orig.dll` jika belum ada,
-- membuat proxy `version.dll`,
-- meluncurkan Roblox otomatis setelah countdown,
-- menunggu Enter untuk cleanup.
-
-### Artefak Yang Disentuh
-
-Pada baseline loader saat ini, file yang paling relevan adalah:
-
-- `RobloxPlayerBeta.exe`
-- `version.dll`
-- `version_orig.dll`
-
-### Catatan Penting
-
-- Jalur ini adalah prototype, bukan workflow yang sudah dianggap final.
-- Cleanup saat ini masih manual dan bergantung pada user menekan Enter.
-- Belum ada verifikasi formal bahwa payload termuat sukses setelah launch.
-
-## Workflow Sekunder - `BloxHubLoader.exe`
-
-`BloxHubLoader.exe` adalah PoC untuk patch import table langsung ke executable target.
-
-### Menjalankan `BloxHubLoader.exe`
-
-1. Buka terminal di folder output build:
-
-```cmd
-cd "C:\Users\Administrator\Downloads\BLOXHUB NEW EXEC\BloxHubExecutorNew\build\bin\Release"
-```
-
-2. Jalankan patcher:
-
-```cmd
-BloxHubLoader.exe "C:\Users\Administrator\AppData\Local\Bloxstrap\Versions\version-xxxxxxxxxxxxxxxx\RobloxPlayerBeta.exe"
-```
-
-### Apa yang Dilakukan PoC Ini
-
-- membuat backup `RobloxPlayerBeta.exe.backup`,
-- membuka PE target,
-- menambahkan import `BloxHubInternal.dll!BloxHubInit`,
-- menyimpan hasil patch ke file target.
-
-### Kapan Dipakai
-
-- saat ingin membandingkan strategi proxy loader dengan patch-import langsung,
-- saat ingin memetakan risiko jalur yang lebih dekat ke model Volt-style,
-- bukan sebagai workflow utama harian.
-
-## Workflow Pembanding - `BloxHubInjector.exe`
-
-`BloxHubInjector.exe` dipertahankan untuk riset manual map dan CFG bypass.
-
-### Menjalankan `BloxHubInjector.exe`
-
-1. Jalankan Roblox terlebih dahulu.
-2. Buka terminal di folder output build:
-
-```cmd
-cd "C:\Users\Administrator\Downloads\BLOXHUB NEW EXEC\BloxHubExecutorNew\build\bin\Release"
-```
-
-3. Jalankan injector:
+Roblox sudah terbuka dulu:
 
 ```cmd
 BloxHubInjector.exe
 ```
 
-4. Injector akan menunggu `RobloxPlayerBeta.exe`, lalu mencoba inject `BloxHubInternal.dll`.
+---
 
-### Kapan Dipakai
+## Mode 2 — Sideload (Eksperimen / Hampir Pasti Gagal)
 
-- saat perlu membedakan bug payload vs bug loader,
-- saat perlu baseline pembanding di luar modifikasi file disk,
-- bukan sebagai fokus pengembangan utama saat ini.
+```cmd
+BloxHub.exe "C:\...\version-xxxxxxxx\RobloxPlayerBeta.exe"
+```
 
-## Expected Operator Flow
+Opsional — ganti target DLL (default `dxgi.dll`):
 
-Untuk fase proyek sekarang, urutan kerja yang direkomendasikan adalah:
+```cmd
+BloxHub.exe "C:\...\RobloxPlayerBeta.exe" dsound.dll
+```
 
-1. build seluruh target,
-2. uji `BloxHub.exe` sebagai baseline loader,
-3. catat file yang berubah dan perilaku restore,
-4. jika perlu pembanding, baru uji `BloxHubLoader.exe`,
-5. gunakan `BloxHubInjector.exe` hanya bila debugging menuntut isolasi masalah payload.
+### Alur
+
+1. Preflight — cek path, `version.dll`, System32 DLL  
+2. Install — copy `dxgi_orig.dll`, tulis proxy `dxgi.dll`  
+3. Launch Roblox  
+4. Verify — tunggu `bloxhub_loaded.txt` (30 detik)  
+5. Tekan Enter → restore (hapus `dxgi.dll`, `dxgi_orig.dll`)  
+
+### Kenapa gagal di Roblox modern
+
+Hyperion menolak proxy sebelum `DllMain` jalan. Gejala:
+
+- Verify timeout  
+- Tidak ada `%TEMP%\bloxhub_test.txt`  
+- Roblox bisa tampilkan "failed to load dxgi.dll"  
+
+**Jangan buang waktu debug sideload dulu** — fokus inject.
+
+---
+
+## Update Offset Setelah Roblox Patch
+
+1. Taruh dump baru di `offsets/raw/`
+2. Copy ke project:
+   ```cmd
+   copy /Y offsets\raw\offsets.h include\offsets.hpp
+   ```
+3. Pastikan blok `CfgBypass` masih ada di akhir file (lihat `STATUS.md`)
+4. Rebuild:
+   ```cmd
+   cmake --build build --config Release
+   ```
+5. Update path Bloxstrap ke versi baru
+
+---
 
 ## Troubleshooting
 
-### `BloxHub.exe` tidak menemukan `RobloxPlayerBeta.exe`
+### `Injection failed` / `OpenProcess` error 87
 
-Periksa:
+**Sudah diperbaiki sebagian:** loader menunggu proses game dengan `RobloxPlayerBeta.dll`.  
+Kalau masih gagal: jalankan **as Administrator**.
 
-- path yang diberikan memang menunjuk ke executable atau folder version yang benar,
-- folder version benar-benar berisi `RobloxPlayerBeta.exe`.
+### Inject "OK" tapi verify timeout, tidak ada log
 
-### `BloxHub.exe` tidak menemukan `version.dll`
+Lihat [`STATUS.md`](STATUS.md) — hipotesis utama:
 
-Periksa:
+- Log ditulis ke temp sandbox Roblox, bukan `%TEMP%` user  
+- `BloxHubInit` crash di dalam proses  
+- CFG scan salah target  
 
-- payload `version.dll` tersedia di folder yang sama dengan executable loader,
-- build output menghasilkan artefak DLL di lokasi yang sama.
+### Versi mismatch
 
-### Cleanup tidak mengembalikan keadaan folder seperti semula
-
-Ini sesuai gap arsitektural yang masih aktif:
-
-- restore loader belum crash-safe,
-- file sisa harus dicek manual jika sesi berhenti di tengah.
-
-### `BloxHubLoader.exe` berhasil patch tetapi runtime tetap gagal
-
-Interpretasi awal:
-
-- sukses patch file tidak sama dengan sukses load runtime,
-- pertimbangkan bahwa masalah bisa berasal dari integrity check, bukan dari kegagalan tool patching.
-
-### `BloxHubInjector.exe` sukses inject tetapi tidak ada bukti payload berjalan
-
-Interpretasi awal:
-
-- track manual map masih punya blocker payload dan runtime bypass,
-- ini adalah gap jalur sekunder, bukan indikator bahwa baseline loader juga salah.
-
-## Manual Cleanup
-
-Jika sesi uji loader meninggalkan artefak sementara, cek folder Roblox dan hapus file yang relevan sesuai eksperimen aktif, misalnya:
-
-```cmd
-del "C:\Users\Administrator\AppData\Local\Bloxstrap\Versions\version-xxxxxxxxxxxxxxxx\version.dll"
-del "C:\Users\Administrator\AppData\Local\Bloxstrap\Versions\version-xxxxxxxxxxxxxxxx\version_orig.dll"
+Loader print:
+```text
+[!] WARNING: Roblox path does not match offsets version!
 ```
 
-Lakukan ini hanya jika memang yakin file tersebut artefak eksperimen. Jika ragu, gunakan verifikasi file dari launcher Roblox atau Bloxstrap.
+Solusi: update `offsets.hpp` atau pakai folder Bloxstrap yang benar.
+
+### Sideload verify timeout, tidak ada `bloxhub_test.txt`
+
+Normal untuk Roblox + Hyperion. Bukan bug loader install — proxy tidak pernah di-load.
+
+### File tertinggal di folder Roblox
+
+Setelah sideload gagal, restore biasanya jalan saat Enter. Kalau sesi putus:
+
+```cmd
+del "C:\...\version-xxx\dxgi.dll"
+del "C:\...\version-xxx\dxgi_orig.dll"
+```
+
+### `BloxHubInternal.dll not found`
+
+Build ulang, pastikan DLL ada di folder yang sama dengan `BloxHub.exe`.
+
+---
+
+## File Sementara yang Mungkin Muncul
+
+| Lokasi | File | Dari |
+|--------|------|------|
+| Folder Roblox | `dxgi.dll`, `dxgi_orig.dll` | Sideload install |
+| Folder Roblox | `bloxhub_loaded.txt` | Payload sideload (jika jalan) |
+| `%TEMP%` user | `bloxhub_test.txt` | Payload log |
+| `%TEMP%` user | `bloxhub_payload_loaded.txt` | Marker verify |
+| Folder `BloxHub.exe` | `bloxhub_session.dat` | Session sideload |

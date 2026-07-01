@@ -1,250 +1,126 @@
-# Daftar Bug & Risiko Teknis
+# Bug & Risiko Terbuka
 
-## Related Documentation
+**Terakhir diperbarui:** Juli 2026  
+**Konteks:** [`STATUS.md`](STATUS.md)
 
-- Project overview: `../README.md`
-- Architecture: `ARCHITECTURE.md`
-- Planning: `PLANNING.md`
-- Active checkpoint: `../checkpoints/CHECKPOINT_20260701_LOADER_IMPROVEMENT.md`
+Daftar ini hanya masalah yang **masih relevan**. Bug yang sudah jelas "by design" (sideload + Hyperion) dicatat sebagai batasan, bukan tugas fix acak.
 
-## Cara Membaca Dokumen Ini
+---
 
-Daftar ini sekarang diprioritaskan untuk `loader-first development`.
+## Kritis — Hambat Inject
 
-Urutannya:
+### B1. Verify gagal meski injector lapor sukses
 
-1. bug dan gap yang langsung menghambat loader aktif,
-2. risiko arsitektural loader yang belum berubah menjadi bug implementasi,
-3. blocker manual map yang tetap dicatat sebagai konteks sekunder.
+**Status:** `active` — blocker utama  
 
-## Bug Aktif - Loader Track
+**Gejala:**
+- `[INJECT] OK`, `BloxHubInit executed successfully!`
+- `%TEMP%\bloxhub_test.txt` tidak ada
+- Verify timeout 30 detik
 
-### 1. Target DLL aktif belum final
+**Penyebab yang paling mungkin:**
+1. `WriteLog` di dalam proses Roblox pakai `GetTempPath()` sandbox ≠ `%TEMP%` user  
+2. Manual map tidak memanggil `DllMain` — marker hanya di `DllMain`, bukan `BloxHubInit`  
+3. Kode `BloxHubInit` crash di Roblox sebelum tulis file  
+4. Hyperion memblokir eksekusi injected code  
 
-Status: `active`
+**Yang perlu dilakukan nanti:** verifikasi dengan Procmon; tulis marker ke path absolut; panggil marker dari `BloxHubInit`.
 
-Deskripsi:
+---
 
-- `BloxHub.exe` saat ini mengandalkan payload `version.dll`.
-- Hasil eksperimen historis menunjukkan target ini belum tentu ideal untuk Roblox.
-- Artinya, baseline loader saat ini masih valid sebagai platform pengembangan, tetapi target pemuatannya belum dianggap keputusan final.
-- Analisa string scan terbaru (2026-07-02): `dxgi.dll` (1 match) dan `dsound.dll` (1 match) muncul sebagai string exact di `RobloxPlayerBeta.exe`. `WebView2Loader.dll` (0 match). `d3d11.dll` (3 match) dan `d3d9.dll` (2 match) juga muncul.
-- `dxgi.dll` memiliki ~720 named exports — proxy forwarding bisa ditangani `pe_patcher`.
-- `dsound.dll` adalah kandidat baru, pola sideload-nya sudah proven di referensi 3LayersPersistence.
-- **Caveat**: string scan bukan bukti final import statis. Butuh verifikasi dengan PE parser formal.
+### B2. CFG auto-scan tidak stabil
 
-Dampak:
+**Status:** `active`  
 
-- hasil uji loader bisa bias karena masalah target DLL, bukan masalah workflow loader,
-- sulit membedakan `desain loader salah` vs `target DLL salah`.
+**Gejala:** Dua run pada PID sama menemukan RVA bitmap berbeda (`0x14F2738` vs `0x12E6128`).
 
-Kebutuhan:
+**Dampak:** Patch CFG mungkin salah target → crash atau bypass tidak efektif.
 
-- dokumentasikan target DLL yang dipakai setiap eksperimen,
-- jadikan pemilihan target sebagai keputusan eksplisit, bukan asumsi tersembunyi,
-- bedakan `baseline implementasi` dari `baseline keyakinan target`,
-- pertahankan shortlist aktif: `dxgi.dll`, `dsound.dll`, `WebView2Loader.dll`, lalu `version.dll`,
-- **langkah kritis**: verifikasi import table dengan `dumpbin /imports`.
+**Yang perlu dilakukan nanti:** Kunci `offsets::CfgBypass::BitmapPtr` manual dari satu scan yang divalidasi; matikan auto-scan atau jadikan fallback terakhir.
 
-### 2. Restore loader belum crash-safe
+---
 
-Status: `active`
+## Batasan Desain — Bukan Bug Kecil
 
-Deskripsi:
+### B3. Sideload `dxgi.dll` diblokir Hyperion
 
-- `BloxHub.exe` saat ini melakukan cleanup setelah user menekan Enter.
-- Jika proses gagal di tengah, user menutup loader, atau file terkunci, rollback tidak dijamin lengkap.
+**Status:** `wontfix` (untuk Roblox saat ini)  
 
-Dampak:
+**Gejala:** Install OK, launch OK, tidak ada log, verify timeout, Roblox: "failed to load dxgi.dll".
 
-- folder Roblox bisa tertinggal dalam state parsial,
-- risiko kebingungan saat pengujian berikutnya meningkat.
+**Kesimpulan:** Jalur sideload bukan prioritas sampai ada bypass integrity file-level.
 
-Kebutuhan:
+---
 
-- definisikan state sesi,
-- catat file yang dipasang,
-- buat aturan restore minimum yang tidak bergantung pada alur sukses penuh.
+### B4. Manual map tidak memanggil `DllMain`
 
-### 3. Tidak ada fase verify pasca-launch
+**Status:** `active` — desain saat ini  
 
-Status: `active`
+Injector hanya memanggil export `BloxHubInit`. TLS, CRT init, dan `DllMain` di-skip.
 
-Deskripsi:
+**Dampak:** Perilaku payload berbeda dari load DLL normal; verify yang mengandalkan `DllMain` tidak akurat.
 
-- Loader saat ini dapat memasang proxy dan menjalankan Roblox,
-- tetapi belum memiliki bukti formal bahwa payload benar-benar termuat dan berjalan sesuai harapan.
+---
 
-Dampak:
+## Sedang — UX & Operasional
 
-- sukses launch bisa menjadi false positive,
-- debugging akan lambat karena tidak ada checkpoint verifikasi yang tegas.
+### B5. Restore sideload belum crash-safe
 
-Kebutuhan:
+**Status:** `active`  
 
-- tetapkan sinyal verifikasi minimum,
-- gunakan log absolut atau indikator sederhana lain sebagai bukti load sukses.
+Cleanup sideload butuh user tekan Enter. Sesi putus → `dxgi.dll` bisa tertinggal.
 
-### 4. Terminologi source loader masih membawa jejak eksperimen lama
+Session file `bloxhub_session.dat` ada tapi auto-restore terbatas.
 
-Status: `active`
+---
 
-Deskripsi:
+### B6. Dokumentasi checkpoint lama membingungkan
 
-- beberapa variabel, pesan log, dan asumsi implementasi masih mewarisi istilah historis seperti `dxgi`,
-- padahal target aktif saat ini adalah `version.dll`.
+**Status:** `mitigated` — lihat `CHECKPOINT_CURRENT.md` dan `STATUS.md`  
 
-Dampak:
+Checkpoint Juli 01 masih bilang "loader-first sideload". Kondisi Juli 2026: inject-first.
 
-- dokumentasi dan source lebih sulit dipahami,
-- AI atau developer baru mudah salah menarik kesimpulan.
+---
 
-Kebutuhan:
+### B7. Offset CFG terpisah dari dump game
 
-- normalisasi istilah pada fase implementasi berikutnya,
-- pastikan nama simbol dan log mencerminkan strategi loader aktif.
+**Status:** `active`  
 
-### 5. `BloxHubLoader.exe` berisiko tinggi terhadap integrity check
+`offsets/raw/offsets.h` dari roblox-dumper = offset game saja.  
+`CfgBypass::BitmapPtr` harus diisi manual dari log scan inject.
 
-Status: `active but secondary`
+---
 
-Deskripsi:
+## Rendah / Legacy
 
-- PoC ini memodifikasi executable target langsung dengan menambah import `BloxHubInternal.dll!BloxHubInit`.
-- Jalur ini penting sebagai laboratorium PE patching, tetapi secara desain paling rentan terhadap deteksi integritas file.
+### B8. Target DLL sideload belum final
 
-Dampak:
+Shortlist historis: `dxgi.dll`, `dsound.dll`. Semua sideload sama-sama kena Hyperion untuk file di folder game.
 
-- bukan kandidat terbaik untuk baseline operasional harian,
-- lebih cocok dipakai sebagai pembanding konsep terhadap model Volt-style.
+### B9. Naming historis di source
 
-Kebutuhan:
+Payload file = `version.dll`, target sideload = `dxgi.dll`. Membingungkan tapi sudah didokumentasikan di `STATUS.md`.
 
-- perlakukan sebagai track eksperimen,
-- jangan menyamakan PoC ini dengan loader utama sampai strategi final dipilih.
+---
 
-## Risiko Arsitektural - Loader Track
+## Matriks: Gejala → Arti
 
-### 1. Proxy generation sudah matang, tetapi session model belum ada
+| Gejala | Interpretasi |
+|--------|--------------|
+| Tidak ada `bloxhub_test.txt` sama sekali | Payload tidak jalan ATAU log di path lain |
+| Sideload install OK, verify timeout | Hyperion blokir proxy (normal) |
+| `OpenProcess` error 87 | PID stub mati (sudah ada fix wait PID) |
+| Inject OK, verify timeout | False positive inject — lihat B1 |
+| CFG RVA beda tiap run | False positive scan — lihat B2 |
+| Versi path ≠ `offsets.hpp` | Offset game salah — update dump |
 
-Status: `risk`
+---
 
-Deskripsi:
+## Yang Sudah Diperbaiki (Jangan Debug Ulang)
 
-- `pe_patcher` sudah cukup kaya untuk membuat proxy DLL,
-- tetapi `BloxHub.exe` belum punya state machine sederhana seperti `prepared`, `installed`, `launched`, `verified`, `restored`, `failed`.
-
-Risiko:
-
-- sulit membuat restore yang deterministik,
-- sulit mendiagnosis kegagalan antar fase.
-
-### 2. Patch-in-place belum punya pagar pengaman yang cukup
-
-Status: `risk`
-
-Deskripsi:
-
-- repositori sudah memiliki `BloxHubLoader.exe` sebagai baseline patch import langsung,
-- tetapi belum ada strategi baku untuk backup multi-file, validasi hasil patch, atau rollback jika patch gagal.
-
-Risiko:
-
-- file target bisa rusak atau tidak sinkron,
-- eksperimen jadi mahal untuk diulang.
-
-### 3. `version_proxy.cpp` masih sangat eksperimental
-
-Status: `risk`
-
-Deskripsi:
-
-- payload/proxy saat ini masih berisi logging dan perilaku `DllMain` yang khas fase eksperimen,
-- belum didokumentasikan sebagai payload final produksi loader.
-
-Risiko:
-
-- perilaku runtime proxy bisa tercampur antara debugging, stealth, dan eksperimen historis,
-- sulit menjadikannya baseline jangka panjang tanpa spesifikasi baru.
-
-## Blocker Sekunder - Manual Map Track
-
-### 1. CRT dependency crash pada `BloxHubInternal.dll`
-
-Status: `secondary active`
-
-Deskripsi:
-
-- payload manual map masih membawa dependensi CRT,
-- proses target tidak menjamin keberadaan dependensi tersebut,
-- hasilnya bisa berupa crash sebelum log terbentuk.
-
-Catatan:
-
-- ini tetap penting untuk jalur injector,
-- tetapi bukan prioritas utama selama fokus proyek berada di loader track.
-
-### 2. CFG bitmap candidate belum tervalidasi penuh
-
-Status: `secondary active`
-
-Deskripsi:
-
-- kandidat bitmap sudah ditemukan,
-- tetapi validasi akhirnya masih tertahan oleh stabilitas payload manual map.
-
-### 3. `CreateRemoteThread` tetap menjadi titik risiko
-
-Status: `secondary active`
-
-Deskripsi:
-
-- jalur injector saat ini masih bergantung pada `CreateRemoteThread`,
-- ini adalah risiko klasik untuk track bypass runtime.
-
-## Historical Findings Worth Preserving
-
-### 1. KnownDLLs tetap tidak cocok untuk proxy hijack
-
-Implikasi:
-
-- jangan mengarahkan loader ke target yang secara native diambil Windows dari KnownDLLs.
-
-### 2. Integrity dan signature check adalah batas desain, bukan sekadar bug
-
-Implikasi:
-
-- beberapa eksperimen lama gagal bukan karena coding error,
-- tetapi karena jalur desainnya memang bertabrakan dengan model verifikasi target.
-
-### 3. Manual map perlu payload yang sangat ketat
-
-Implikasi:
-
-- payload manual map harus pure Win32 API,
-- tidak boleh membawa asumsi CRT atau dependency chain sembarangan.
-
-## Closed / Legacy Items
-
-### 1. `ReadFileFromDiskW` unresolved external
-
-Status: `closed`
-
-Catatan: isu legacy pada era proxy generation, sudah tidak menjadi blocker utama.
-
-### 2. False positive pada CFG bitmap auto-scan
-
-Status: `closed`
-
-Catatan: filter scanner sudah diperketat pada jalur manual map.
-
-### 3. Restore gagal karena file locked
-
-Status: `partially improved`
-
-Catatan: sudah ada error handling lebih baik, tetapi restore loader tetap belum dianggap selesai secara arsitektural.
-
-## Referensi
-
-- Active checkpoint: `../checkpoints/CHECKPOINT_20260702_PLANNING_L2.md`
-- Planning: `PLANNING.md`
+| Masalah | Fix |
+|---------|-----|
+| Inject ke PID stub yang sudah mati | `WaitForRobloxGameProcess()` |
+| Marker ditulis setelah forward load gagal | Marker lebih dulu di `proxy_payload` (sideload) |
+| Error message inject tidak jelas | Log per-step di `manual_map.cpp` |
+| Offset versi lama | Updated ke `version-5cf2272675e145f5` |

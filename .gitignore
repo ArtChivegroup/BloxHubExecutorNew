@@ -25,44 +25,39 @@ Makefile
 *.vcxproj
 *.sln
 
-# Compiled Object files
+# Compiled artifacts
 *.slo
 *.lo
 *.o
 *.obj
-
-# Precompiled Headers
 *.gch
 *.pch
-
-# Compiled Dynamic libraries
 *.so
 *.dylib
 *.dll
 *.exp
-
-# Compiled Static libraries
 *.lai
 *.la
 *.a
 *.lib
-
-# Executables
 *.exe
 *.out
 *.app
 *.i*86
 *.x86_64
 *.hex
-
-# Debug files
 *.dSYM/
 *.su
 *.idb
 *.pdb
 
-# Temporary files
+# Session / runtime artifacts
+bloxhub_session.dat
+bloxhub_loaded.txt
+bloxhub_payload_loaded.txt
+bloxhub_test.txt
+
+# Temp / scratch
 *.def
 proxy_exports.txt
 system_exports.txt
-percakapan terakhiti.md

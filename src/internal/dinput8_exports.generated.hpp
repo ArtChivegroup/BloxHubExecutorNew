@@ -1,6 +1,0 @@
-#pragma comment(linker, "/export:DirectInput8Create=dinput8_orig.DirectInput8Create,@1")
-#pragma comment(linker, "/export:DllCanUnloadNow=dinput8_orig.DllCanUnloadNow,@2")
-#pragma comment(linker, "/export:DllGetClassObject=dinput8_orig.DllGetClassObject,@3")
-#pragma comment(linker, "/export:DllRegisterServer=dinput8_orig.DllRegisterServer,@4")
-#pragma comment(linker, "/export:DllUnregisterServer=dinput8_orig.DllUnregisterServer,@5")
-#pragma comment(linker, "/export:GetdfDIJoystick=dinput8_orig.GetdfDIJoystick,@6")

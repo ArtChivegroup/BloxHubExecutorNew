@@ -1,5 +1,6 @@
 #include "injector.hpp"
 #include "cfg_bypass.h"
+#include "offsets.hpp"
 #include <Windows.h>
 #include <Psapi.h>
 #include <TlHelp32.h>
@@ -8,6 +9,28 @@
 #include <cstdio>
 
 #define valid_handle(x) (x != INVALID_HANDLE_VALUE && x != nullptr)
+
+static bool TryCfgBitmapFromRva(HANDLE process, uintptr_t robloxBase, uintptr_t rva, uintptr_t* outSlotAddr)
+{
+    if (!rva || !outSlotAddr) return false;
+
+    uintptr_t slot = robloxBase + rva;
+    uintptr_t ptr = 0;
+    SIZE_T bytesRead = 0;
+    if (!ReadProcessMemory(process, (LPCVOID)slot, &ptr, sizeof(ptr), &bytesRead) || !ptr)
+        return false;
+
+    MEMORY_BASIC_INFORMATION mbi;
+    if (!VirtualQueryEx(process, (LPCVOID)ptr, &mbi, sizeof(mbi)))
+        return false;
+    if (mbi.State != MEM_COMMIT || mbi.RegionSize < 0x10000)
+        return false;
+
+    *outSlotAddr = slot;
+    printf("[*] CFG bitmap slot RVA 0x%llX -> 0x%llX\n",
+        (unsigned long long)rva, (unsigned long long)ptr);
+    return true;
+}
 
 static bool load_file_into_memory(const std::string file_path, std::vector<uint8_t>& image) {
     std::ifstream file(file_path, std::ios::binary | std::ios::ate);
@@ -68,29 +91,35 @@ static DWORD FindMainThread(DWORD pid)
 
 injector::InjectionStatus injector::Inject(uint32_t pid, const std::string& dll_path, bool enableCfgBypass) {
     HANDLE process = OpenProcess(PROCESS_ALL_ACCESS, false, pid);
-    if (!valid_handle(process))
+    if (!valid_handle(process)) {
+        printf("[!] OpenProcess(pid=%u) failed: %lu\n", pid, GetLastError());
         return InjectionStatus::FAILED;
+    }
 
     std::vector<uint8_t> image;
     if (!load_file_into_memory(dll_path, image)) {
+        printf("[!] Failed to read DLL: %s\n", dll_path.c_str());
         CloseHandle(process);
         return InjectionStatus::FAILED;
     }
 
     const auto* dos_header = (PIMAGE_DOS_HEADER)image.data();
     if (dos_header->e_magic != IMAGE_DOS_SIGNATURE) {
+        printf("[!] Invalid DOS header in payload DLL\n");
         CloseHandle(process);
         return InjectionStatus::FAILED;
     }
 
     auto* nt_headers = (PIMAGE_NT_HEADERS)(image.data() + dos_header->e_lfanew);
     if (nt_headers->Signature != IMAGE_NT_SIGNATURE) {
+        printf("[!] Invalid PE signature in payload DLL\n");
         CloseHandle(process);
         return InjectionStatus::FAILED;
     }
 
     const auto* remote_image = (uint8_t*)VirtualAllocEx(process, 0, nt_headers->OptionalHeader.SizeOfImage, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
     if (!remote_image) {
+        printf("[!] VirtualAllocEx failed: %lu\n", GetLastError());
         CloseHandle(process);
         return InjectionStatus::FAILED;
     }
@@ -149,7 +178,7 @@ injector::InjectionStatus injector::Inject(uint32_t pid, const std::string& dll_
 
     // Write fixed image to target
     if (!WriteProcessMemory(process, (void*)remote_image, fixed_image.data(), fixed_image.size(), nullptr)) {
-        printf("[!] WriteProcessMemory failed!\n");
+        printf("[!] WriteProcessMemory failed: %lu\n", GetLastError());
         VirtualFreeEx(process, (void*)remote_image, 0, MEM_RELEASE);
         CloseHandle(process);
         return InjectionStatus::FAILED;
@@ -160,7 +189,7 @@ injector::InjectionStatus injector::Inject(uint32_t pid, const std::string& dll_
     // CFG Bypass (Hyperion Control Flow Guard)
     // ==========================================
     if (enableCfgBypass) {
-        printf("[*] Executing CFG bypass...\n");
+        printf("[*] Executing CFG bypass (offsets for %s)...\n", offsets::roblox_version);
 
         uintptr_t robloxBase = GetModuleBase(process, L"RobloxPlayerBeta.dll");
         if (robloxBase) {
@@ -175,18 +204,9 @@ injector::InjectionStatus injector::Inject(uint32_t pid, const std::string& dll_
                 uintptr_t robloxSize = ntHdr.OptionalHeader.SizeOfImage;
                 uintptr_t bitmapAddr = 0;
 
-                // Method 1: Try known offsets (from RBX-cfg-bypass reference & our offsets.hpp)
-                // These are common RVA ranges where Roblox stores the CFG bitmap pointer
-                // The bitmap ptr is a 8-byte global in .rdata pointing to a dynamically allocated bitmap
-                const uintptr_t knownRVAs[] = {
-                    0x2B74D0,  // RBX-cfg-bypass reference (version-2a06298afe3947ab)
-                    0x29A710,  // Common whitelist offset
-                    0x2A0000,  // Nearby range
-                    0x2B0000,
-                    0x2C0000,
-                };
-
-                // Method 2: Smart scan .rdata for a pointer to a large committed RW region
+                if (!TryCfgBitmapFromRva(process, robloxBase, offsets::CfgBypass::BitmapPtr, &bitmapAddr))
+                {
+                // Smart scan .rdata/.data for CFG bitmap pointer slot
                 IMAGE_SECTION_HEADER sections[32];
                 if (ReadProcessMemory(process,
                     (LPCVOID)(robloxBase + dosHdr.e_lfanew + sizeof(IMAGE_NT_HEADERS)),
@@ -255,6 +275,7 @@ injector::InjectionStatus injector::Inject(uint32_t pid, const std::string& dll_
                             }
                         }
                     }
+                }
                 }
 
                 if (bitmapAddr)
