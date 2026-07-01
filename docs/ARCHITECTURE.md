@@ -6,101 +6,124 @@
 - **For project overview**: [../README.md](../README.md)
 - **For known bugs**: [BUGS.md](BUGS.md)
 - **For roadmap & planning**: [PLANNING.md](PLANNING.md)
-- **For progress checkpoints**: [../checkpoints/CHECKPOINT_20260701_FINAL.md](../checkpoints/CHECKPOINT_20260701_FINAL.md)
+- **For latest checkpoint**: [../checkpoints/CHECKPOINT_20260701_MANUALMAP.md](../checkpoints/CHECKPOINT_20260701_MANUALMAP.md)
 
 ---
 ## Overview
-BloxHub Executor adalah executor untuk Roblox yang dirancang dengan **Dynamic DLL Proxying (Runtime PE Patching)** untuk evasi Hyperion!
+BloxHub Executor adalah executor untuk Roblox dengan **Manual Map Injection + CFG Bypass**
+untuk evasi Hyperion.
 
 ---
 ## Evolusi Arsitektur
-### Sebelumnya
-- BloxHubLoader.exe (PE Editor Import Hijacking) ❌ Terdeteksi Hyperion!
-- BloxHubInjector.exe (Manual Map)
-- BloxHubInternal.dll (Payload)
 
-### Sekarang: Dynamic DLL Proxying with 3LayersPersistence
-**Static .def & Import Hijack gagal!** Jadi kita gunakan teknik **Runtime PE Patching** dari `EXAMPLE PROJECT/3LayersPersistence-main`!
+### Sebelumnya (DIBATALKAN)
+- **DLL Proxying**: Import Hijacking + Dynamic PE Patching
+- Gagal karena: Hyperion verifikasi signature DLL grafis (dxgi.dll), DLL lain tidak dicari di app folder
+
+### Sekarang: Manual Map + CFG Bypass
+Metode inject DLL langsung ke memori Roblox tanpa LoadLibrary → melewati signature check.
+CFG bypass dari RBX-cfg-bypass memungkinkan eksekusi kode.
 
 ---
 ## Komponen Utama
-### 1. BloxHub.exe (Modern Loader)
-**Fungsi**: Loader yang membuat proxy DLL secara runtime dan drop ke folder Roblox!  
-**Tanggung Jawab**:
-- Baca payload DLL proxy (contoh: `dxgi.dll`) dari folder build
-- Baca DLL asli dari System32 (contoh: `C:\Windows\System32\dxgi.dll`)
-- Buat export table forwarder ke `*_orig.dll` (contoh: `dxgi_orig.dll`) secara runtime!
-- Patch payload DLL dengan export table tersebut!
-- Copy DLL asli ke folder Roblox sebagai `*_orig.dll`
-- Drop proxy DLL yang sudah di-patch ke folder Roblox!
-- Auto-launch Roblox setelah 3 detik countdown!
-- Restore file Roblox ketika selesai!
 
-### 2. Payload Proxy DLL (`dxgi.dll` / dll lain)
-**Fungsi**: DLL proxy yang dimuat Roblox, kemudian menjalankan payload kita!  
+### 1. BloxHubInjector.exe (Injector)
+**Fungsi**: CLI injector yang menunggu Roblox, lalu inject DLL via Manual Map.
 **Tanggung Jawab**:
-- `DllMain`: Cek apakah di-load oleh RobloxPlayerBeta.exe
-- Load `*_orig.dll` (contoh: `dxgi_orig.dll`)
-- Forward semua fungsi ke `*_orig.dll`
-- Logging ke file
-- PE Header Wiping (jika berhasil dimuat Roblox)
+- Cari RobloxPlayerBeta.exe via CreateToolhelp32Snapshot
+- OpenProcess → VirtualAllocEx → alokasi memori di target
+- Manual Map: copy sections, relocate, resolve imports
+- CFG Bypass: auto-scan bitmap → patch via WriteProcessMemory
+- CreateRemoteThread → panggil BloxHubInit export
 
-### 3. `pe_patcher.h` & `pe_patcher.cpp`
-**Fungsi**: Core library untuk Runtime PE Patching, diadaptasi dari `3LayersPersistence`!  
+### 2. BloxHubInternal.dll (Payload)
+**Fungsi**: DLL minimal yang di-inject ke Roblox.
+**Tanggung Jawab**:
+- Export `BloxHubInit` — dipanggil injector via CreateRemoteThread
+- DllMain — logging dasar ke %TEMP%\bloxhub_test.txt
+- **WAJIB**: pure Win32 API, tanpa CRT dependency
+
+### 3. cfg_bypass.h / cfg_bypass.cpp (CFG Bypass Module)
+**Fungsi**: Core library untuk bypass Hyperion Control Flow Guard.
 **Fitur**:
-- `ReadFileFromDiskW`: Baca file PE dari disk
-- `RvaToFileOffset`: Konversi RVA ke file offset
-- `ComputePECheckSum`: Hitung checksum PE
-- `BuildExportTableFromDll`: Bangun export table forwarder dari DLL asli
-- `PatchExportAddressTable`: Tambahkan section .edata ke payload DLL
-- `ConvertPayloadToProxy`: Fungsi utama yang menggabungkan semua langkah di atas!
+- `PatchCfgBitmap`: Auto-scan .rdata/.data → temukan bitmap pointer → flip bit untuk region DLL
+- `BypassCfgForRegion`: Layer 1 (bitmap) + Layer 2 (whitelist via shellcode)
+- Filter smart: page-aligned, AllocationBase, min 1MB addr, min 64KB region
+
+### 4. offsets.hpp (Runtime Offsets)
+**Fungsi**: Database offset untuk Roblox version-1a951716f19e4638.
+**Kategori**:
+- Game objects (Player, Workspace, Camera, dll.)
+- Lua VM functions (LuauLoad, LuaResume, LuaNewThread)
+- **CFG Bypass** (BitmapPtr, Whitelist, InsertSet)
 
 ---
-## Alur Kerja Dynamic Proxy
+## Alur Kerja Manual Map + CFG Bypass
+
 ```
-[BloxHub.exe]
-    |
-    |-- 1. Baca payload DLL proxy (dxgi.dll) dari disk
-    |-- 2. Baca DLL asli dari System32 (C:\Windows\System32\dxgi.dll)
-    |-- 3. BuildExportTableFromDll() → buat export table forward ke dxgi_orig.dll
-    |-- 4. PatchExportAddressTable() → patch payload DLL dengan export table baru
-    |-- 5. Copy System32 dxgi.dll → Roblox folder/dxgi_orig.dll
-    |-- 6. Write proxy dxgi.dll (sudah di-patch) ke Roblox folder
-    |-- 7. Tunggu 3 detik countdown
-    |-- 8. Auto-launch RobloxPlayerBeta.exe
+[BloxHubInjector.exe]
+    │
+    ├── 1. Wait for RobloxPlayerBeta.exe
+    ├── 2. OpenProcess(PROCESS_ALL_ACCESS)
+    ├── 3. Read BloxHubInternal.dll from disk
+    │
+    ├── 4. Parse PE headers
+    ├── 5. VirtualAllocEx → alokasi SizeOfImage di Roblox (RWX)
+    │
+    ├── 6. Manual Map:
+    │     ├── Copy sections (.text, .rdata, .data, etc.)
+    │     ├── Apply base relocations (IMAGE_REL_BASED_DIR64)
+    │     ├── Resolve imports (kernel32, user32 only!)
+    │     └── WriteProcessMemory → tulis ke remote
+    │
+    ├── 7. CFG Bypass:
+    │     ├── Scan .rdata/.data RobloxPlayerBeta.dll
+    │     ├── Filter: page-aligned, AllocationBase, min 64KB
+    │     ├── Temukan bitmap pointer (RVA 0x1432808 → 0x920000)
+    │     └── Patch bitmap bits untuk region DLL kita
+    │
+    ├── 8. Find BloxHubInit export di DLL
+    ├── 9. CreateRemoteThread → panggil BloxHubInit
+    │
     ↓
 [RobloxPlayerBeta.exe]
-    |
-    |-- Mencari dxgi.dll di folder aplikasi terlebih dahulu
-    |-- Memuat proxy dxgi.dll kita!
-    ↓
-[Proxy dxgi.dll]
-    |
-    |-- DllMain dipanggil
-    |-- Cek apakah host = RobloxPlayerBeta.exe
-    |-- Load dxgi_orig.dll
-    |-- Forward semua fungsi ke dxgi_orig.dll
-    |-- Log ke %TEMP%\bloxhub_test.txt
-    |-- (Jika di Roblox) Wipe PE Header
+    │
+    ├── Thread baru execute BloxHubInit
+    ├── DllMain dipanggil (DLL_PROCESS_ATTACH)
+    ├── WriteLog ke %TEMP%\bloxhub_test.txt
+    └── (Future) Hook TaskScheduler → execute Lua
 ```
-
----
-## Teknik Dari 3LayersPersistence
-1. **Dynamic Export Table Generation**: Tidak perlu .def manual, baca export table DLL asli secara runtime!
-2. **Timestamp Spoofing**: Timestamp proxy DLL dibuat lebih tua 30-60 hari dari asli!
-3. **Export Sorting**: Nama di export table diurutkan ascending untuk kompatibilitas!
-4. **Checksum Recalculation**: Hitung ulang PE checksum setelah memodifikasi!
-5. **.edata Section Baru**: Tambahkan section baru untuk export table yang di-generate!
 
 ---
 ## Tech Stack
 - **Bahasa**: C++20
 - **Build System**: CMake
-- **Library**: Shlwapi (PathRemoveFileSpec), Winsock (opsional untuk silent bridge)
-- **Referensi**: `EXAMPLE PROJECT/3LayersPersistence-main` & `EXAMPLE PROJECT/RBX-cfg-bypass-main`
+- **Target DLL**: Pure Win32 API (kernel32.dll, user32.dll)
+- **Library**: Psapi (module enumeration), TlHelp32 (process/thread snapshots)
+- **Referensi**: `EXAMPLE PROJECT/RBX-cfg-bypass-main`
 - **Target**: Windows 10+ x64
 
 ---
+## Struktur File
+
+```
+src/
+├── BloxHubInjector.cpp     # CLI injector entry point
+├── BloxHub.cpp             # DLL Proxy loader (legacy)
+├── injector/
+│   ├── manual_map.cpp      # Manual mapper + CFG bypass integration
+│   ├── cfg_bypass.h        # CFG bypass structures & API
+│   └── cfg_bypass.cpp      # Bitmap scanner + patcher
+├── internal/
+│   ├── dllmain.cpp         # Payload DLL (BloxHubInternal)
+│   ├── pe_patcher.h/.cpp   # PE patcher (legacy, dari 3LayersPersistence)
+│   └── *_proxy.cpp         # DLL proxy files (legacy)
+include/
+├── injector.hpp            # Injection API
+└── offsets.hpp             # Roblox runtime offsets
+```
+
+---
 ## Referensi
-- [Checkpoint Terakhir](../checkpoints/CHECKPOINT_20260701_FINAL.md)
-- [Daftar Bug](../docs/BUGS.md)
+- [Checkpoint Terbaru](../checkpoints/CHECKPOINT_20260701_MANUALMAP.md)
+- [Daftar Bug](BUGS.md)

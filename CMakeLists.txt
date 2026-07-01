@@ -58,19 +58,20 @@ add_library(BloxHubInternal SHARED
 )
 target_include_directories(BloxHubInternal PRIVATE ${CMAKE_SOURCE_DIR}/include)
 
-# dxgi.dll (Proxy DLL for Roblox)
-add_library(dxgi SHARED
-    src/internal/dxgi_proxy.cpp
+# version.dll (Proxy DLL for Roblox)
+add_library(version SHARED
+    src/internal/version_proxy.cpp
 )
-target_include_directories(dxgi PRIVATE ${CMAKE_SOURCE_DIR}/include)
+target_include_directories(version PRIVATE ${CMAKE_SOURCE_DIR}/include)
 
 # BloxHubInjector EXE
 add_executable(BloxHubInjector
     src/BloxHubInjector.cpp
     src/injector/manual_map.cpp
+    src/injector/cfg_bypass.cpp
 )
-target_include_directories(BloxHubInjector PRIVATE ${CMAKE_SOURCE_DIR}/include)
-target_link_libraries(BloxHubInjector PRIVATE user32 kernel32)
+target_include_directories(BloxHubInjector PRIVATE ${CMAKE_SOURCE_DIR}/include ${CMAKE_SOURCE_DIR}/src/injector)
+target_link_libraries(BloxHubInjector PRIVATE user32 kernel32 psapi)
 
 # BloxHubLoader EXE (legacy, import hijack)
 add_executable(BloxHubLoader

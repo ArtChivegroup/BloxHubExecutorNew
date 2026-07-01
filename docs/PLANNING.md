@@ -2,90 +2,95 @@
 # Planning & Roadmap
 
 ---
-
 ## Related Documentation
 - **For project overview**: [../README.md](../README.md)
 - **For architecture details**: [ARCHITECTURE.md](ARCHITECTURE.md)
 - **For known bugs**: [BUGS.md](BUGS.md)
-- **For progress checkpoints**: [../checkpoints/CHECKPOINT_20260701.md](../checkpoints/CHECKPOINT_20260701.md)
+- **For latest checkpoint**: [../checkpoints/CHECKPOINT_20260701_MANUALMAP.md](../checkpoints/CHECKPOINT_20260701_MANUALMAP.md)
 
 ---
+## Evolusi Arsitektur
 
-## Evolusi Arsitektur: Modern Loader Integration
-BloxHub akan diadaptasi ke **Modern Loader** yang memisahkan frontend dan backend, serta mengelola payload secara dinamis untuk evasi Hyperion yang lebih baik.
+### Fase 1: DLL Proxying (DIBATALKAN)
+- [x] Static .def proxy — gagal (KnownDLLs + signature check)
+- [x] Dynamic PE Patching (3LayersPersistence) — gagal (dxgi.dll signature diverifikasi Hyperion)
+- [x] Test berbagai target DLL — version.dll, dbghelp.dll, dinput8.dll tidak dicari Roblox
 
----
+**Kesimpulan**: DLL Proxying mentok. Hyperion verifikasi signature DLL grafis, DLL lain tidak dicari.
 
-## Versi 1.0 - Dasar (Belum Selesai, Perlu Improvement & Testing)
-- [x] Setup project CMake
-- [x] Implementasi BloxHubLoader (Import Hijacking) - **DICABAIKAN! Import Hijack TERDETEKSI Hyperion! Lihat [Daftar Bug](../docs/BUGS.md) dan [Checkpoint Terakhir](../checkpoints/CHECKPOINT_20260701.md)!**
-- [x] Implementasi BloxHubInjector (Manual Map) - **SUDAH TESTED BERHASIL DI NOTEPAD!**
-- [x] Implementasi BloxHubInternal.dll (logging dasar) - **SUDAH TESTED BERHASIL DI NOTEPAD!**
-- [x] Implementasi BloxHub.exe (Modern Loader Tahap 1: Dasar) - **SUDAH TESTED! Backup/Copy/Restore bekerja, tapi Import Hijack gagal di Roblox!**
-
----
-
-## Versi 2.0 - Modern Loader (Switch ke DLL Proxying!)
-- [x] Gabungkan BloxHubLoader dan BloxHubClient menjadi **BloxHub.exe** (Modern Loader Dasar - Backup/Copy DLL/Restore sudah bekerja!)
-- [ ] Fase 1: Buat DLL Proxy (`version.dll`) dengan export forwarding ke `version_orig.dll` (lihat [Checkpoint Terakhir](../checkpoints/CHECKPOINT_20260701.md))
-- [ ] Fase 2: Update `BloxHub.exe` untuk drop DLL Proxy dan restore otomatis
-- [ ] Fase 3: Fix Silent Bridge (TCP Listener) di DLL Proxy (Non-Blocking Mode, poll di scheduler hook)
-- [ ] Fase 4: Implementasi CFG Bypass (jika perlu, lihat `../EXAMPLE PROJECT/RBX-cfg-bypass-main/`)
+### Fase 2: Manual Map + CFG Bypass (AKTIF)
+- [x] Port RBX-cfg-bypass → cfg_bypass.h/.cpp
+- [x] Update manual_map.cpp — integrasi CFG bypass
+- [x] Auto-scan bitmap di .rdata/.data (berhasil temukan kandidat)
+- [x] CFG bitmap patching via WriteProcessMemory
+- [x] Whitelist shellcode injection (framework siap, butuh offsets)
+- [ ] **Rewrite dllmain.cpp pure Win32 API (tanpa CRT)** ⭐ NEXT
+- [ ] Test ulang dengan DLL baru
+- [ ] Thread Hijacking (ganti CreateRemoteThread)
 
 ---
+## Prioritas TERTINGGI
 
-## Versi 2.1 - Modern Loader (Tahap 2: Silent Bridge)
-- [ ] Implementasi thread-safe **Execution Queue** di DLL
-- [ ] Implementasi **Task Scheduler Hook** di DLL
-- [ ] Implementasi **PE Header Wiping** di DllMain DLL_PROCESS_ATTACH
-- [ ] Implementasi enkripsi payload Lua di memory
+### 1. Rewrite dllmain.cpp — Pure Win32 API
+**Alasan**: CRT dependency crash (VCRUNTIME140.dll tidak ada di Roblox).
+**Target**: DLL hanya import kernel32.dll + user32.dll.
+**Detail**:
+- Hapus `fopen_s`, `fprintf`, `sprintf_s`, `strcpy_s`, `strcat_s`
+- Ganti dengan `CreateFileA`, `WriteFile`, `CloseHandle`, loop manual
+- Build: `/GS- /NODEFAULTLIB`
+- Entry point: raw DllMain tanpa CRT wrapper
 
----
+### 2. Verifikasi CFG Bitmap
+Setelah CRT fix → test ulang → pastikan bitmap ter-patch benar.
 
-## Versi 2.2 - Modern Loader (Tahap 3: Dynamic Payload)
-- [ ] Implementasi **Dynamic Payload Fetching** (opsional):
-  - Gunakan WinHTTP/CPR untuk fetch payload dari server
-  - Payload dienkripsi unik per-HWID
-  - Drop payload hanya sebagai file sementara (temp) dengan nama acak
-- [ ] (Opsional) Authentication & Licensing (HWID + Key)
-
----
-
-## Versi 3.0 - Lua Execution
-- [ ] Integrasi dengan LuaVM Roblox
-- [ ] Set identity level (6/8)
-- [ ] Executor Lua dasar di UI
-- [ ] Script hub
+### 3. Thread Hijacking
+Ganti `CreateRemoteThread` yang dimonitor Hyperion.
+- Suspend main thread Roblox
+- Backup context (registers)
+- Redirect RIP ke BloxHubInit
+- Resume thread
 
 ---
+## Prioritas SEDANG
 
-## Prioritas Tinggi
-1. Buat DLL Proxy (`version.dll`)
-2. Update `BloxHub.exe` untuk DLL Proxying setup/restore
-3. Fix bug koneksi TCP listener (Non-Blocking Mode di scheduler hook)
-4. PE Header Wiping di DLL
+### 4. CFG Whitelist Insertion (Layer 2)
+Setelah bitmap terverifikasi, tambahkan whitelist entry via shellcode insert_set.
+Butuh offsets: `Whitelist` dan `InsertSet` di RobloxPlayerBeta.dll.
 
----
+### 5. Direct Syscalls
+Jika Hyperion hook `WriteProcessMemory` / `VirtualAllocEx`:
+- Ganti dengan syscall langsung (NtWriteVirtualMemory)
+- Teknik: Indirect Syscalls (Hell's Gate / Halo's Gate)
 
-## Prioritas Sedang
-1. Task Scheduler Hook
-2. Execution Queue thread-safe
-3. Dynamic Port Handshake
-4. CFG Bypass
-5. Enkripsi payload Lua
+### 6. Scheduler Hook
+Setelah DLL berhasil load, hook TaskScheduler untuk eksekusi Lua per-frame.
 
 ---
+## Prioritas RENDAH
 
-## Prioritas Rendah
-1. Dynamic Payload Fetching dari server
-2. Authentication & Licensing
-3. GUI Client (sekarang bisa CLI dulu)
-4. Script hub online
-5. Auto-update
+### 7. Lua Execution
+- Integrasi Luau VM
+- Set identity level (6/8)
+- Script hub
+
+### 8. GUI Client
+- UI untuk edit/execute script
+- Script browser
 
 ---
+## Versi & Milestone
 
+| Versi | Deskripsi | Status |
+|-------|-----------|--------|
+| v1.0 | Import Hijacking (BloxHubLoader) | ❌ Dibatalkan |
+| v1.1 | DLL Proxying (Static .def) | ❌ Dibatalkan |
+| v1.2 | DLL Proxying (Dynamic PE Patch) | ❌ Dibatalkan |
+| **v2.0** | **Manual Map + CFG Bypass** | 🔄 In Progress |
+| v2.1 | Thread Hijacking | ⏸️ |
+| v3.0 | Lua Execution | ⏸️ |
+
+---
 ## Referensi Lainnya
-- [Checkpoint Terakhir](../checkpoints/CHECKPOINT_20260701.md) - Rencana detail langkah demi langkah!
-- [Daftar Bug](../docs/BUGS.md) - Masalah yang sedang terjadi!
-- [Arsitektur Sistem](../docs/ARCHITECTURE.md) - Penjelasan arsitektur!
+- [Checkpoint Terbaru](../checkpoints/CHECKPOINT_20260701_MANUALMAP.md)
+- [Daftar Bug](BUGS.md)
+- [Arsitektur Sistem](ARCHITECTURE.md)

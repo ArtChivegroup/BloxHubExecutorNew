@@ -449,4 +449,20 @@ namespace offsets {
         inline constexpr uintptr_t ExecContext    = 0x90;
     }
 
+    // ============================================================
+    // CFG Bypass Offsets (Hyperion Control Flow Guard)
+    //
+    // Ditemukan via auto-scan runtime (Manual Map + CFG Bypass test)
+    // Roblox Version: version-1a951716f19e4638
+    //
+    // Cara update: jalankan BloxHubInjector.exe, lihat log:
+    //   "Found CFG bitmap candidate at RVA 0xXXXXXXXX -> 0xXXXXXXXX"
+    // Copy RVA ke BitmapPtr di bawah
+    // ============================================================
+    namespace CfgBypass {
+        inline constexpr uintptr_t BitmapPtr     = 0x1432808; // RVA di .data section → pointer ke bitmap
+        inline constexpr uintptr_t Whitelist     = 0x0;       // TODO: RVA whitelist unordered_set
+        inline constexpr uintptr_t InsertSet     = 0x0;       // TODO: RVA insert_set function
+    }
+
 } // namespace offsets

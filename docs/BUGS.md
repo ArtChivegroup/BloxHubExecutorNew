@@ -6,54 +6,70 @@
 - **For project overview**: [../README.md](../README.md)
 - **For architecture details**: [ARCHITECTURE.md](ARCHITECTURE.md)
 - **For roadmap & planning**: [PLANNING.md](PLANNING.md)
-- **For progress checkpoints**: [../checkpoints/CHECKPOINT_20260701_FINAL.md](../checkpoints/CHECKPOINT_20260701_FINAL.md)
+- **For latest checkpoint**: [../checkpoints/CHECKPOINT_20260701_MANUALMAP.md](../checkpoints/CHECKPOINT_20260701_MANUALMAP.md)
 
 ---
 ## Bug Aktif
 
-### 1. Roblox Damaged (Import Hijacking)
-**Status**: ❌ Critical, Dibatalkan!  
-**Deskripsi**: Ketika menggunakan BloxHubLoader/BloxHub.exe untuk memodifikasi Import Table RobloxPlayerBeta.exe, Roblox menampilkan pesan "Roblox has missing or damaged files. Please reinstall it." dan tidak bisa dibuka.  
-**Alasan**: Hyperion Integrity Check memverifikasi hash file RobloxPlayerBeta.exe!  
-**Solusi**: Dibatalkan, pindah ke DLL Proxying!
+### 1. CRT Dependency Crash di Manual Map (CRITICAL - NEXT FIX)
+**Status**: 🔴 Active
+**Deskripsi**: Manual mapper me-resolve import di INJECTOR process, lalu tulis alamat ke Roblox. 
+`BloxHubInternal.dll` import VCRUNTIME140.dll + api-ms-win-crt-*.dll yang TIDAK ADA di Roblox.
+Akibatnya: IAT berisi alamat sampah → DllMain crash → tidak ada log.
+**Solusi**: Rewrite `dllmain.cpp` pure Win32 API (`CreateFileA`, `WriteFile`), flag `/GS- /NODEFAULTLIB`.
 
-### 2. Koneksi TCP Gagal (Silent Bridge)
-**Status**: ⏸️ Pending (Fokus ke DLL Proxy dulu)
-**Deskripsi**: Listener TCP di DLL tidak bisa dihubungi dari client.
+### 2. CFG Bitmap Candidate Belum Terverifikasi
+**Status**: 🟡 Pending (tergantung fix CRT)
+**Deskripsi**: Scanner menemukan kandidat bitmap di RVA `0x1432808` → `0x920000`.
+Belum bisa diverifikasi karena DLL crash duluan (bug #1).
+**Solusi**: Setelah CRT fix, test ulang untuk verifikasi.
 
-### 3. DLL Proxy Gagal Load di Roblox
-**Status**: 🔄 Active
-**Deskripsi**:
-- Static .def: Proxy DLL tidak pernah dimuat oleh Roblox
-- Dynamic PE Patching (3Layers): Roblox mencoba load `dxgi.dll` tapi masih gagal!
-**Kemungkinan Penyebab**:
-  - Kita pilih DLL target yang tidak dicari Roblox di folder aplikasi
-  - Proxy DLL masih memiliki bug di export table!
-**Langkah Debug**:
-  - Tambahkan lebih banyak logging di `DllMain` (ke file yang jelas seperti `C:\bloxhub_debug.txt`)
-  - Cek apakah `DllMain` dipanggil sama sekali!
-  - Coba DLL target lain yang biasa di-sideload!
+### 3. Hyperion Monitoring CreateRemoteThread
+**Status**: ⏸️ Pending (belum terdeteksi, antisipasi)
+**Deskripsi**: Hyperion kemungkinan hook `CreateRemoteThread`.
+**Solusi**: Ganti dengan Thread Hijacking (suspend main thread → redirect RIP → resume).
 
 ---
 ## Bug Yang Sudah Diperbaiki
-### Bug 1: LNK Error unresolved external `ReadFileFromDiskW`
-**Status**: ✅ Fixed!
-**Alasan**: `ReadFileFromDiskW` dideklarasikan static di dalam fungsi `ConvertPayloadToProxy`!
-**Fix**: Pindahkan deklarasi static ke atas file `pe_patcher.cpp`!
+
+### Bug: DLL Proxy — dxgi.dll Signature Ditolak Hyperion
+**Status**: ✅ Dibatalkan (bukan bug, by design)
+**Alasan**: dxgi.dll signed Microsoft → Hyperion verifikasi signature → proxy unsigned ditolak.
+
+### Bug: DLL Proxy — version.dll Tidak Dicari di App Folder
+**Status**: ✅ Dibatalkan (bukan bug)
+**Alasan**: Roblox load version.dll dari System32 via absolute path/manifest, abaikan app folder.
+
+### Bug: CFG Bitmap Auto-Scan False Positive
+**Status**: ✅ Fixed
+**Deskripsi**: Scanner mendeteksi `0x200000002` sebagai bitmap (bukan pointer valid).
+**Fix**: Filter page-aligned, AllocationBase, min 1MB address, min 64KB region.
+
+### Bug: LNK Error unresolved external `ReadFileFromDiskW`
+**Status**: ✅ Fixed (legacy, dari era DLL Proxying)
+
+### Bug: Restore Gagal — File Locked
+**Status**: ✅ Fixed (legacy)
+**Fix**: Tambah error checking di BloxHub.cpp.
 
 ---
 ## Penemuan Penting
-### 1. KnownDLLs Registry
-JANGAN target DLL yang ada di `HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\KnownDLLs`! DLL tersebut selalu di-load dari System32 dan tidak bisa di-proxy!
-Daftar KnownDLLs yang dicek:
-- `winmm.dll` ❌
-- `kernel32.dll` ❌
-- `user32.dll` ❌
-- dll.
 
-### 2. DLL Yang Di-Load Tapi Tidak Di-Search di Folder App
-Banyak DLL yang muncul di daftar modules Roblox tapi tidak dicari di folder aplikasi! Kita harus coba satu per satu!
+### 1. Struktur Robust DLL Manual Map
+DLL yang di-manual-map HARUS:
+- Pure Win32 API saja (kernel32.dll, user32.dll, ntdll.dll)
+- TIDAK boleh import CRT (VCRUNTIME, ucrtbase, api-ms-win-crt-*)
+- TIDAK boleh import DLL lain yang tidak dijamin ada di target
+- Build flag: `/GS- /NODEFAULTLIB`
+- Karena kernel32.dll punya alamat sama di injector & target (thanks ASLR per boot session)
+
+### 2. Daftar KnownDLLs Windows
+JANGAN target DLL KnownDLLs untuk proxy: winmm.dll, kernel32.dll, user32.dll, gdi32.dll, dll.
+
+### 3. DLL Load Order Roblox
+Hanya dxgi.dll yang dicari di app folder. DLL lain (version, dbghelp, dinput8) dari System32.
 
 ---
 ## Referensi
-- [Checkpoint Terakhir](../checkpoints/CHECKPOINT_20260701_FINAL.md)
+- [Checkpoint Terbaru](../checkpoints/CHECKPOINT_20260701_MANUALMAP.md)
+- [Planning & Roadmap](PLANNING.md)

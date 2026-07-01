@@ -18,8 +18,8 @@ BOOL WriteFileToDiskW(LPCWSTR pszFileName, const BYTE* pbDataBuffer, DWORD dwDat
 
 int main(int argc, char* argv[])
 {
-    std::cout << "BloxHub Modern Loader (dxgi.dll Proxy)\n";
-    std::cout << "--------------------------------------\n\n";
+    std::cout << "BloxHub Modern Loader (version.dll Proxy)\n";
+    std::cout << "-----------------------------------------\n\n";
 
     fs::path roblox_exe;
 
@@ -59,16 +59,16 @@ int main(int argc, char* argv[])
     GetModuleFileNameW(NULL, exe_path, MAX_PATH);
     fs::path our_exe = exe_path;
     auto our_dir = our_exe.parent_path();
-    auto payload_dll = our_dir / "dxgi.dll";
+    auto payload_dll = our_dir / "version.dll";
 
     if (!fs::exists(payload_dll))
     {
-        std::cerr << "[!] dxgi.dll (payload) not found in current directory!\n";
+        std::cerr << "[!] version.dll (payload) not found in current directory!\n";
         std::cout << "[*] Press Enter to exit...\n";
         std::cin.get();
         return 1;
     }
-    std::wcout << L"[*] Found dxgi.dll (payload): " << payload_dll.wstring() << L"\n";
+    std::wcout << L"[*] Found version.dll (payload): " << payload_dll.wstring() << L"\n";
 
     const wchar_t* windir = _wgetenv(L"WINDIR");
     if (!windir)
@@ -77,9 +77,9 @@ int main(int argc, char* argv[])
         return 1;
     }
 
-    auto system_dxgi = fs::path(windir) / "System32" / "dxgi.dll";
-    auto roblox_dxgi_dll = roblox_dir / "dxgi.dll";
-    auto roblox_dxgi_orig_dll = roblox_dir / "dxgi_orig.dll";
+    auto system_dxgi = fs::path(windir) / "System32" / "version.dll";
+    auto roblox_dxgi_dll = roblox_dir / "version.dll";
+    auto roblox_dxgi_orig_dll = roblox_dir / "version_orig.dll";
 
     try
     {
@@ -89,7 +89,7 @@ int main(int argc, char* argv[])
         }
         else
         {
-            std::cout << "[*] Copying System32 dxgi.dll to dxgi_orig.dll...\n";
+            std::cout << "[*] Copying System32 version.dll to version_orig.dll...\n";
             fs::copy_file(system_dxgi, roblox_dxgi_orig_dll, fs::copy_options::overwrite_existing);
 
             std::cout << "[*] Generating dynamic proxy DLL...\n";
@@ -98,7 +98,7 @@ int main(int argc, char* argv[])
             if (!ConvertPayloadToProxy(
                 payload_dll.wstring().c_str(),
                 system_dxgi.wstring().c_str(),
-                L"dxgi_orig.dll",
+                L"version_orig.dll",
                 &pProxyBuffer,
                 &dwProxySize
             ))
@@ -107,7 +107,7 @@ int main(int argc, char* argv[])
                 return 1;
             }
 
-            std::wcout << L"[*] Writing proxy dxgi.dll to Roblox directory...\n";
+            std::wcout << L"[*] Writing proxy version.dll to Roblox directory...\n";
             if (!WriteFileToDiskW(roblox_dxgi_dll.wstring().c_str(), pProxyBuffer, dwProxySize))
             {
                 std::cerr << "[!] Failed to write proxy DLL!\n";
@@ -165,11 +165,11 @@ int main(int argc, char* argv[])
             try
             {
                 fs::remove(roblox_dxgi_dll);
-                std::cout << "[*] Deleted dxgi.dll (proxy)\n";
+                std::cout << "[*] Deleted version.dll (proxy)\n";
             }
             catch (const fs::filesystem_error& e)
             {
-                std::cerr << "[!] Failed to delete dxgi.dll: " << e.what() << "\n";
+                std::cerr << "[!] Failed to delete version.dll: " << e.what() << "\n";
                 restore_ok = false;
             }
         }
@@ -179,7 +179,7 @@ int main(int argc, char* argv[])
             try
             {
                 fs::remove(roblox_dxgi_orig_dll);
-                std::cout << "[*] Deleted dxgi_orig.dll\n";
+                std::cout << "[*] Deleted version_orig.dll\n";
             }
             catch (const fs::filesystem_error& e)
             {

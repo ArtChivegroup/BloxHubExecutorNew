@@ -1,64 +1,71 @@
 
 # BloxHub Executor
 
-Executor Roblox dengan fokus stealth dan keandalan.
+Executor Roblox dengan **Manual Map Injection + CFG Bypass** untuk evasi Hyperion.
 
 ---
-
 ## Related Documentation
 - **For architecture details**: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
 - **For build instructions**: [docs/BUILD.md](docs/BUILD.md)
 - **For usage guide**: [docs/USAGE.md](docs/USAGE.md)
 - **For known bugs**: [docs/BUGS.md](docs/BUGS.md)
 - **For roadmap & planning**: [docs/PLANNING.md](docs/PLANNING.md)
-- **For progress checkpoints**: [checkpoints/CHECKPOINT_20260701.md](checkpoints/CHECKPOINT_20260701.md)
+- **For latest checkpoint**: [checkpoints/CHECKPOINT_20260701_MANUALMAP.md](checkpoints/CHECKPOINT_20260701_MANUALMAP.md)
 
 ---
+## Status Terkini
 
-## Dokumentasi Lengkap
-- [Arsitektur Sistem](docs/ARCHITECTURE.md) - Penjelasan komponen dan arsitektur "Silent Bridge"
-- [Cara Build](docs/BUILD.md) - Langkah-langkah build project
-- [Cara Penggunaan](docs/USAGE.md) - Panduan penggunaan
-- [Daftar Bug](docs/BUGS.md) - Bug dan masalah yang sedang terjadi
-- [Planning & Roadmap](docs/PLANNING.md) - Rencana pengembangan
-- [Checkpoints](checkpoints/) - Catatan progres dan milestone (lihat `checkpoints/CHECKPOINT_20260701.md` untuk update terakhir!)
+| Metode | Status |
+|--------|--------|
+| DLL Proxying (Import Hijack + PE Patch) | ❌ **Dibatalkan** — Hyperion signature check |
+| **Manual Map + CFG Bypass** | 🔄 **In Progress** — Injection OK, CRT fix pending |
 
 ---
+## Arsitektur (Manual Map + CFG Bypass)
 
+```
+BloxHubInjector.exe
+  │
+  ├── Wait RobloxPlayerBeta.exe
+  ├── Manual Map BloxHubInternal.dll → Roblox process
+  ├── CFG Bypass (bitmap patching dari RBX-cfg-bypass)
+  └── CreateRemoteThread → BloxHubInit()
+```
+
+---
 ## Struktur Proyek
 ```
 BloxHubExecutorNew/
 ├── include/
-│   ├── injector.hpp      # Header manual map injector
-│   └── offsets.hpp       # Offset Roblox (version-1a951716f19e4638)
+│   ├── injector.hpp        # Injection API
+│   └── offsets.hpp         # Roblox runtime offsets (v1a951716f19e4638)
 ├── src/
+│   ├── BloxHubInjector.cpp # CLI Injector entry point
+│   ├── BloxHub.cpp         # DLL Proxy loader (legacy)
 │   ├── injector/
-│   │   ├── manual_map.cpp
-│   │   └── hijack.cpp
-│   ├── internal/
-│   │   └── dllmain.cpp
-│   ├── BloxHubInjector.cpp
-│   ├── BloxHubLoader.cpp
-│   └── BloxHub.cpp        # Modern Loader (baru!)
-├── vendor/
-│   ├── pe_bliss/
-│   └── pe/
-├── docs/                   # Dokumentasi utama (arsitektur, build, bugs, dll.)
-├── checkpoints/            # Catatan progres dan milestone (lihat `checkpoints/CHECKPOINT_20260701.md`!)
-├── EXAMPLE PROJECT/        # Contoh referensi (CFG Bypass, dll.)
+│   │   ├── manual_map.cpp  # Manual mapper + CFG bypass integration
+│   │   ├── cfg_bypass.h    # CFG bypass header
+│   │   └── cfg_bypass.cpp  # Bitmap scanner + patcher
+│   └── internal/
+│       ├── dllmain.cpp     # Payload DLL (BloxHubInternal)
+│       ├── pe_patcher.cpp  # PE patcher (legacy)
+│       └── *_proxy.cpp     # DLL proxy files (legacy)
+├── docs/                   # Dokumentasi
+├── checkpoints/            # Progress tracking
+├── EXAMPLE PROJECT/        # Referensi (RBX-cfg-bypass, 3LayersPersistence)
 ├── CMakeLists.txt
 └── README.md
 ```
 
 ---
-
 ## Quick Start
 Lihat [Cara Build](docs/BUILD.md) dan [Cara Penggunaan](docs/USAGE.md).
 
-Untuk update progres terakhir, lihat [Checkpoints](checkpoints/CHECKPOINT_20260701.md)!
+Untuk update progres terakhir, lihat [Checkpoint Terbaru](checkpoints/CHECKPOINT_20260701_MANUALMAP.md).
 
 ---
-
-## Catatan Penting
-- Import Hijacking dicabut karena terdeteksi Hyperion! Lihat [Daftar Bug](docs/BUGS.md) dan [Checkpoint Terakhir](checkpoints/CHECKPOINT_20260701.md).
-- Rencana selanjutnya: Pivot ke DLL Proxying! Lihat [Planning & Roadmap](docs/PLANNING.md).
+## Next Step (Prioritas)
+1. ⭐ **Rewrite `dllmain.cpp` — Pure Win32 API (no CRT)** — fix CRT dependency crash
+2. Verifikasi CFG bitmap patching berfungsi
+3. Thread Hijacking (ganti CreateRemoteThread)
+4. Direct Syscalls (evasi hook Hyperion)
