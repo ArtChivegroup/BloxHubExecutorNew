@@ -1,91 +1,187 @@
-
 # Cara Penggunaan
 
----
-## Catatan Penting
-- **DLL Proxying**: ❌ Dibatalkan (Hyperion signature check)
-- **Manual Map + CFG Bypass**: ✅ Metode utama saat ini!
+## Posisi Dokumen
 
----
-## Cara Menggunakan BloxHubInjector.exe (Manual Map)
+Dokumen ini sekarang mengikuti strategi `loader-first`.
 
-### Langkah-langkah:
-1. **Buka Roblox dulu** (buka normal, login, masuk game)
-2. Buka CMD baru, masuk ke folder build:
-   ```cmd
-   cd "C:\Users\Administrator\Downloads\BLOXHUB NEW EXEC\BloxHubExecutorNew\build\bin\Release"
-   ```
-3. **Hapus log lama**:
-   ```cmd
-   del %TEMP%\bloxhub_test.txt
-   ```
-4. **Jalankan injector**:
-   ```cmd
-   BloxHubInjector.exe
-   ```
-5. Injector akan auto-detect RobloxPlayerBeta.exe dan inject
-6. **Cek log**:
-   ```cmd
-   type %TEMP%\bloxhub_test.txt
-   ```
+Urutan penggunaan yang benar:
 
-### Output yang Diharapkan:
-```
-[*] Allocated remote image at: 0x....
-[*] DLL written to remote process
-[*] Executing CFG bypass...
-[*] Found CFG bitmap candidate at RVA 0x1432808 -> 0x920000
-[+] CFG: Bitmap patched for region ...
-[*] Calling BloxHubInit at ...
-[+] BloxHubInit executed successfully!
-[+] Injection successful!
+1. gunakan `BloxHub.exe` sebagai baseline loader utama,
+2. gunakan `BloxHubLoader.exe` hanya untuk eksperimen patch-import langsung,
+3. gunakan `BloxHubInjector.exe` hanya sebagai track riset pembanding.
+
+## Workflow Utama - `BloxHub.exe`
+
+`BloxHub.exe` adalah executable yang saat ini paling mewakili arah proyek.
+
+Flow aktualnya:
+
+1. terima path `RobloxPlayerBeta.exe` atau folder version Roblox,
+2. cari payload `version.dll` di folder executable loader,
+3. salin `System32\version.dll` menjadi `version_orig.dll` ke folder target,
+4. generate proxy DLL baru lewat `pe_patcher`,
+5. tulis proxy `version.dll` ke folder Roblox,
+6. launch Roblox,
+7. tunggu input user,
+8. hapus artefak sementara saat cleanup.
+
+### Menjalankan `BloxHub.exe`
+
+1. Buka terminal di folder output build:
+
+```cmd
+cd "C:\Users\Administrator\Downloads\BLOXHUB NEW EXEC\BloxHubExecutorNew\build\bin\Release"
 ```
 
-Log di `%TEMP%\bloxhub_test.txt` seharusnya berisi:
+2. Jalankan loader dengan path executable atau folder version:
+
+```cmd
+BloxHub.exe "C:\Users\Administrator\AppData\Local\Bloxstrap\Versions\version-xxxxxxxxxxxxxxxx\RobloxPlayerBeta.exe"
 ```
-[BloxHub] Injected successfully!
-[BloxHub] Timestamp: ...
+
+Atau:
+
+```cmd
+BloxHub.exe "C:\Users\Administrator\AppData\Local\Bloxstrap\Versions\version-xxxxxxxxxxxxxxxx"
 ```
 
----
+3. Pastikan file `version.dll` payload berada di folder yang sama dengan `BloxHub.exe`.
 
-## Cara Menggunakan BloxHub.exe (DLL Proxy — LEGACY)
-1. Jalankan `build/bin/Release/BloxHub.exe`
-2. Masukkan path folder Roblox (contoh: `C:\Users\Administrator\AppData\Local\Bloxstrap\Versions\version-1a951716f19e4638`)
-3. Tunggu countdown 3 detik → Roblox terbuka otomatis
-4. Setelah selesai, tekan Enter untuk restore file
+4. Loader akan:
 
----
+- menampilkan direktori Roblox yang dipakai,
+- mengecek keberadaan payload,
+- membuat `version_orig.dll` jika belum ada,
+- membuat proxy `version.dll`,
+- meluncurkan Roblox otomatis setelah countdown,
+- menunggu Enter untuk cleanup.
+
+### Artefak Yang Disentuh
+
+Pada baseline loader saat ini, file yang paling relevan adalah:
+
+- `RobloxPlayerBeta.exe`
+- `version.dll`
+- `version_orig.dll`
+
+### Catatan Penting
+
+- Jalur ini adalah prototype, bukan workflow yang sudah dianggap final.
+- Cleanup saat ini masih manual dan bergantung pada user menekan Enter.
+- Belum ada verifikasi formal bahwa payload termuat sukses setelah launch.
+
+## Workflow Sekunder - `BloxHubLoader.exe`
+
+`BloxHubLoader.exe` adalah PoC untuk patch import table langsung ke executable target.
+
+### Menjalankan `BloxHubLoader.exe`
+
+1. Buka terminal di folder output build:
+
+```cmd
+cd "C:\Users\Administrator\Downloads\BLOXHUB NEW EXEC\BloxHubExecutorNew\build\bin\Release"
+```
+
+2. Jalankan patcher:
+
+```cmd
+BloxHubLoader.exe "C:\Users\Administrator\AppData\Local\Bloxstrap\Versions\version-xxxxxxxxxxxxxxxx\RobloxPlayerBeta.exe"
+```
+
+### Apa yang Dilakukan PoC Ini
+
+- membuat backup `RobloxPlayerBeta.exe.backup`,
+- membuka PE target,
+- menambahkan import `BloxHubInternal.dll!BloxHubInit`,
+- menyimpan hasil patch ke file target.
+
+### Kapan Dipakai
+
+- saat ingin membandingkan strategi proxy loader dengan patch-import langsung,
+- saat ingin memetakan risiko jalur yang lebih dekat ke model Volt-style,
+- bukan sebagai workflow utama harian.
+
+## Workflow Pembanding - `BloxHubInjector.exe`
+
+`BloxHubInjector.exe` dipertahankan untuk riset manual map dan CFG bypass.
+
+### Menjalankan `BloxHubInjector.exe`
+
+1. Jalankan Roblox terlebih dahulu.
+2. Buka terminal di folder output build:
+
+```cmd
+cd "C:\Users\Administrator\Downloads\BLOXHUB NEW EXEC\BloxHubExecutorNew\build\bin\Release"
+```
+
+3. Jalankan injector:
+
+```cmd
+BloxHubInjector.exe
+```
+
+4. Injector akan menunggu `RobloxPlayerBeta.exe`, lalu mencoba inject `BloxHubInternal.dll`.
+
+### Kapan Dipakai
+
+- saat perlu membedakan bug payload vs bug loader,
+- saat perlu baseline pembanding di luar modifikasi file disk,
+- bukan sebagai fokus pengembangan utama saat ini.
+
+## Expected Operator Flow
+
+Untuk fase proyek sekarang, urutan kerja yang direkomendasikan adalah:
+
+1. build seluruh target,
+2. uji `BloxHub.exe` sebagai baseline loader,
+3. catat file yang berubah dan perilaku restore,
+4. jika perlu pembanding, baru uji `BloxHubLoader.exe`,
+5. gunakan `BloxHubInjector.exe` hanya bila debugging menuntut isolasi masalah payload.
 
 ## Troubleshooting
 
-### Tidak ada log setelah inject?
-- **Masalah**: CRT dependency crash (VCRUNTIME140.dll tidak ada di Roblox)
-- **Fix**: Coming soon — rewrite dllmain.cpp pure Win32 API
+### `BloxHub.exe` tidak menemukan `RobloxPlayerBeta.exe`
 
-### CFG bitmap tidak ditemukan?
-- **Masalah**: Offset bitmap berubah antar Roblox version
-- **Fix**: Update `offsets.hpp → CfgBypass::BitmapPtr` dengan RVA dari log scanner
+Periksa:
 
-### Roblox crash setelah inject?
-- Cek apakah ada antivirus blocking
-- Cek apakah Hyperion update (offset berubah)
-- Coba restart PC dan test ulang
+- path yang diberikan memang menunjuk ke executable atau folder version yang benar,
+- folder version benar-benar berisi `RobloxPlayerBeta.exe`.
 
----
-## Cara Update Offsets
-Saat Roblox update ke versi baru:
-1. Jalankan BloxHubInjector.exe — lihat log scanner untuk RVA bitmap baru
-2. Update `include/offsets.hpp → CfgBypass::BitmapPtr`
-3. Update Lua offsets jika perlu (via roblox-dumper)
-4. Rebuild proyek
+### `BloxHub.exe` tidak menemukan `version.dll`
 
----
-## Cleanup Roblox Folder
-Jika ada file sisa dari test DLL Proxying sebelumnya, hapus manual:
+Periksa:
+
+- payload `version.dll` tersedia di folder yang sama dengan executable loader,
+- build output menghasilkan artefak DLL di lokasi yang sama.
+
+### Cleanup tidak mengembalikan keadaan folder seperti semula
+
+Ini sesuai gap arsitektural yang masih aktif:
+
+- restore loader belum crash-safe,
+- file sisa harus dicek manual jika sesi berhenti di tengah.
+
+### `BloxHubLoader.exe` berhasil patch tetapi runtime tetap gagal
+
+Interpretasi awal:
+
+- sukses patch file tidak sama dengan sukses load runtime,
+- pertimbangkan bahwa masalah bisa berasal dari integrity check, bukan dari kegagalan tool patching.
+
+### `BloxHubInjector.exe` sukses inject tetapi tidak ada bukti payload berjalan
+
+Interpretasi awal:
+
+- track manual map masih punya blocker payload dan runtime bypass,
+- ini adalah gap jalur sekunder, bukan indikator bahwa baseline loader juga salah.
+
+## Manual Cleanup
+
+Jika sesi uji loader meninggalkan artefak sementara, cek folder Roblox dan hapus file yang relevan sesuai eksperimen aktif, misalnya:
+
 ```cmd
-del "C:\Users\Administrator\AppData\Local\Bloxstrap\Versions\version-1a951716f19e4638\version.dll"
-del "C:\Users\Administrator\AppData\Local\Bloxstrap\Versions\version-1a951716f19e4638\version_orig.dll"
-:: ...dan file proxy lainnya
+del "C:\Users\Administrator\AppData\Local\Bloxstrap\Versions\version-xxxxxxxxxxxxxxxx\version.dll"
+del "C:\Users\Administrator\AppData\Local\Bloxstrap\Versions\version-xxxxxxxxxxxxxxxx\version_orig.dll"
 ```
-Atau buka Bloxstrap → Verify Files.
+
+Lakukan ini hanya jika memang yakin file tersebut artefak eksperimen. Jika ragu, gunakan verifikasi file dari launcher Roblox atau Bloxstrap.

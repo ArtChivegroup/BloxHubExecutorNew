@@ -1,96 +1,228 @@
-
 # Planning & Roadmap
 
----
 ## Related Documentation
-- **For project overview**: [../README.md](../README.md)
-- **For architecture details**: [ARCHITECTURE.md](ARCHITECTURE.md)
-- **For known bugs**: [BUGS.md](BUGS.md)
-- **For latest checkpoint**: [../checkpoints/CHECKPOINT_20260701_MANUALMAP.md](../checkpoints/CHECKPOINT_20260701_MANUALMAP.md)
 
----
-## Evolusi Arsitektur
+- Project overview: `../README.md`
+- Architecture details: `ARCHITECTURE.md`
+- Known bugs and risks: `BUGS.md`
+- Active checkpoint: `../checkpoints/CHECKPOINT_20260701_LOADER_IMPROVEMENT.md`
 
-### Fase 1: DLL Proxying (DIBATALKAN)
-- [x] Static .def proxy — gagal (KnownDLLs + signature check)
-- [x] Dynamic PE Patching (3LayersPersistence) — gagal (dxgi.dll signature diverifikasi Hyperion)
-- [x] Test berbagai target DLL — version.dll, dbghelp.dll, dinput8.dll tidak dicari Roblox
+## Planning Position
 
-**Kesimpulan**: DLL Proxying mentok. Hyperion verifikasi signature DLL grafis, DLL lain tidak dicari.
+Roadmap proyek resmi sekarang adalah `loader-first roadmap`.
 
-### Fase 2: Manual Map + CFG Bypass (AKTIF)
-- [x] Port RBX-cfg-bypass → cfg_bypass.h/.cpp
-- [x] Update manual_map.cpp — integrasi CFG bypass
-- [x] Auto-scan bitmap di .rdata/.data (berhasil temukan kandidat)
-- [x] CFG bitmap patching via WriteProcessMemory
-- [x] Whitelist shellcode injection (framework siap, butuh offsets)
-- [ ] **Rewrite dllmain.cpp pure Win32 API (tanpa CRT)** ⭐ NEXT
-- [ ] Test ulang dengan DLL baru
-- [ ] Thread Hijacking (ganti CreateRemoteThread)
+Manual map tidak dihapus dari repositori, tetapi perannya diperkecil menjadi:
 
----
-## Prioritas TERTINGGI
+- baseline pembanding perilaku payload,
+- jalur riset sekunder,
+- fallback jika perlu memisahkan masalah runtime injection dari masalah loader di disk.
 
-### 1. Rewrite dllmain.cpp — Pure Win32 API
-**Alasan**: CRT dependency crash (VCRUNTIME140.dll tidak ada di Roblox).
-**Target**: DLL hanya import kernel32.dll + user32.dll.
-**Detail**:
-- Hapus `fopen_s`, `fprintf`, `sprintf_s`, `strcpy_s`, `strcat_s`
-- Ganti dengan `CreateFileA`, `WriteFile`, `CloseHandle`, loop manual
-- Build: `/GS- /NODEFAULTLIB`
-- Entry point: raw DllMain tanpa CRT wrapper
+Artinya, planning tidak lagi disusun dengan asumsi "manual map dulu, loader nanti". Urutan yang benar sekarang adalah:
 
-### 2. Verifikasi CFG Bitmap
-Setelah CRT fix → test ulang → pastikan bitmap ter-patch benar.
+1. matangkan loader,
+2. dokumentasikan gap loader,
+3. gunakan manual map hanya bila membantu validasi atau pembandingan.
 
-### 3. Thread Hijacking
-Ganti `CreateRemoteThread` yang dimonitor Hyperion.
-- Suspend main thread Roblox
-- Backup context (registers)
-- Redirect RIP ke BloxHubInit
-- Resume thread
+## Baseline Yang Sudah Dimiliki
 
----
-## Prioritas SEDANG
+### Loader baseline
 
-### 4. CFG Whitelist Insertion (Layer 2)
-Setelah bitmap terverifikasi, tambahkan whitelist entry via shellcode insert_set.
-Butuh offsets: `Whitelist` dan `InsertSet` di RobloxPlayerBeta.dll.
+- `BloxHub.exe` sudah memiliki flow `resolve target -> install proxy -> launch -> cleanup`.
+- `pe_patcher` sudah bisa membangun export-forwarding proxy dari payload DLL.
+- `BloxHubLoader.exe` sudah membuktikan konsep patch import langsung ke executable target.
 
-### 5. Direct Syscalls
-Jika Hyperion hook `WriteProcessMemory` / `VirtualAllocEx`:
-- Ganti dengan syscall langsung (NtWriteVirtualMemory)
-- Teknik: Indirect Syscalls (Hell's Gate / Halo's Gate)
+### Manual map baseline
 
-### 6. Scheduler Hook
-Setelah DLL berhasil load, hook TaskScheduler untuk eksekusi Lua per-frame.
+- `BloxHubInjector.exe` sudah dapat melakukan manual mapping.
+- CFG bitmap patching sudah terintegrasi.
+- Jalur ini tetap berguna untuk eksperimen terpisah, tetapi bukan milestone aktif utama.
 
----
-## Prioritas RENDAH
+## Decision Framework
 
-### 7. Lua Execution
-- Integrasi Luau VM
-- Set identity level (6/8)
-- Script hub
+Semua pengembangan berikutnya dievaluasi dengan pertanyaan sederhana:
 
-### 8. GUI Client
-- UI untuk edit/execute script
-- Script browser
+1. apakah perubahan ini membuat loader utama lebih jelas, lebih dapat diuji, atau lebih aman di-restore,
+2. apakah perubahan ini membantu memilih strategi loader akhir,
+3. jika tidak, apakah pekerjaan itu sebaiknya ditunda ke track manual map atau fase setelah loader stabil.
 
----
-## Versi & Milestone
+## Loader Strategy Options
 
-| Versi | Deskripsi | Status |
-|-------|-----------|--------|
-| v1.0 | Import Hijacking (BloxHubLoader) | ❌ Dibatalkan |
-| v1.1 | DLL Proxying (Static .def) | ❌ Dibatalkan |
-| v1.2 | DLL Proxying (Dynamic PE Patch) | ❌ Dibatalkan |
-| **v2.0** | **Manual Map + CFG Bypass** | 🔄 In Progress |
-| v2.1 | Thread Hijacking | ⏸️ |
-| v3.0 | Lua Execution | ⏸️ |
+### Option A: Proxy / sideload style
 
----
-## Referensi Lainnya
-- [Checkpoint Terbaru](../checkpoints/CHECKPOINT_20260701_MANUALMAP.md)
-- [Daftar Bug](BUGS.md)
-- [Arsitektur Sistem](ARCHITECTURE.md)
+Karakter:
+
+- install file pendukung ke folder Roblox,
+- gunakan DLL target yang dapat dimuat native oleh Windows,
+- jalankan Roblox lewat launcher,
+- restore file setelah sesi selesai.
+
+Kelebihan:
+
+- baseline source sudah ada,
+- paling cepat dikembangkan dari kondisi repo saat ini,
+- cocok untuk membangun workflow installer, launcher, dan restore.
+
+Kekurangan:
+
+- target DLL aktif `version.dll` belum terbukti final,
+- perilaku load order Roblox harus terus diverifikasi.
+
+### Option B: PE patch / import patch / section rewrite
+
+Karakter:
+
+- memodifikasi `RobloxPlayerBeta.exe` atau artefak PE terkait,
+- menambah import, section, atau metadata baru,
+- berpotensi lebih dekat dengan pola Volt.
+
+Kelebihan:
+
+- lebih dekat dengan model loader tanpa injector eksternal,
+- bisa menjadi jalur pengembangan jangka menengah jika proxy target tidak stabil.
+
+Kekurangan:
+
+- lebih tinggi risiko integrity check,
+- memerlukan restore yang lebih kuat,
+- lebih berbahaya untuk file target jika patching gagal.
+
+### Working assumption saat ini
+
+Strategi termurah untuk dikembangkan dari source yang sudah ada adalah:
+
+1. pertahankan `BloxHub.exe` sebagai baseline operasional,
+2. pertajam state machine dan restore,
+3. dokumentasikan keputusan target DLL,
+4. gunakan `BloxHubLoader.exe` sebagai laboratorium konsep patching langsung,
+5. bandingkan hasilnya dengan analisis Volt sebelum memilih strategi akhir.
+
+## Active Milestones
+
+### Milestone L0 - Documentation Reset
+
+Tujuan:
+
+- semua dokumen inti harus mengarah ke `loader improvement`,
+- AI langsung paham objective proyek,
+- checkpoint historis tetap tersimpan tetapi tidak mendikte roadmap aktif.
+
+Status: `done`
+
+### Milestone L1 - Loader Baseline Stabilization
+
+Tujuan:
+
+- definisikan flow loader resmi,
+- dokumentasikan file yang disentuh,
+- rapikan istilah historis yang membingungkan,
+- nyatakan gap restore, verify, dan target DLL secara eksplisit.
+
+Deliverables:
+
+- baseline documentation lengkap,
+- checkpoint loader improvement,
+- daftar gap teknis yang terurut.
+
+Status: `active`
+
+### Milestone L2 - Preflight And Session Model
+
+Tujuan:
+
+- loader punya fase `preflight`,
+- validasi path dan payload sebelum install,
+- simpan state sesi agar restore tidak bergantung pada memori user.
+
+Deliverables:
+
+- desain state `prepared / installed / launched / verified / restored / failed`,
+- daftar file dan artefak yang dicadangkan,
+- aturan rollback minimum.
+
+Status: `next`
+
+### Milestone L3 - Verify And Restore Hardening
+
+Tujuan:
+
+- loader bisa membuktikan payload termuat,
+- restore tetap mungkin setelah gagal di tengah proses,
+- ada logging minimum untuk audit sesi.
+
+Deliverables:
+
+- verifikasi pasca-launch,
+- restore checklist,
+- strategi handling bila Roblox atau loader crash.
+
+Status: `planned`
+
+### Milestone L4 - Strategy Selection
+
+Tujuan:
+
+- memutuskan apakah jalur utama tetap `proxy/sideload`,
+- atau dipindahkan ke `PE patch / section rewrite` ala Volt.
+
+Keputusan ini baru diambil setelah:
+
+- baseline loader sekarang dibersihkan,
+- risiko restore dipahami,
+- dan keterbatasan target DLL aktif terdokumentasi jelas.
+
+Status: `planned`
+
+### Milestone L5 - Implementation Track
+
+Pilihan implementasi setelah L4:
+
+- lanjutkan modern proxy loader, atau
+- bangun loader ala Volt berbasis patching file yang lebih agresif.
+
+Status: `deferred until strategy decision`
+
+## Near-Term Work Queue
+
+1. Jadikan `BloxHub.exe` sebagai loader baseline resmi dalam semua dokumen.
+2. Petakan file yang disentuh loader dan perilaku restore saat ini.
+3. Pastikan checkpoint baru merangkum `apa yang sudah ada`, `apa yang belum ada`, dan `apa objective berikutnya`.
+4. Definisikan bagaimana keberhasilan loader akan diverifikasi.
+5. Baru setelah itu evaluasi strategi Volt-style secara lebih agresif.
+
+## Comparison Against Manual Map
+
+| Aspek | Loader track | Manual map track |
+|------|--------------|------------------|
+| Fokus aktif | Ya | Tidak |
+| Baseline source tersedia | Ya | Ya |
+| Menjawab objective user saat ini | Ya | Tidak langsung |
+| Bergantung bypass runtime | Lebih sedikit | Sangat tinggi |
+| Membantu desain workflow install/restore | Ya | Tidak |
+| Berguna sebagai pembanding teknis | Ya | Ya |
+
+## Success Criteria
+
+Planning fase loader dianggap bergerak benar jika:
+
+- dokumen utama konsisten menyebut loader sebagai fokus aktif,
+- AI baru bisa mengidentifikasi file inti loader tanpa membaca seluruh histori repo,
+- gap teknis loader terurut berdasarkan prioritas,
+- dan keputusan berikutnya dapat dibandingkan langsung terhadap baseline loader, bukan terhadap asumsi lama manual map.
+
+## Deferred Work
+
+Item berikut sengaja tidak menjadi prioritas aktif selama fase loader:
+
+- rewrite payload manual map hanya untuk memulihkan track injector,
+- thread hijacking untuk injector,
+- direct syscall untuk injector,
+- integrasi Lua executor,
+- GUI client.
+
+Item-item ini tetap valid, tetapi baru masuk lagi setelah loader track memiliki bentuk yang jelas atau bila dibutuhkan sebagai riset pendukung.
+
+## References
+
+- Active checkpoint: `../checkpoints/CHECKPOINT_20260701_LOADER_IMPROVEMENT.md`
+- Bug list: `BUGS.md`
+- Architecture: `ARCHITECTURE.md`
