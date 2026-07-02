@@ -6,9 +6,10 @@ Windows x64 loader research project for Roblox (Bloxstrap). Primary path: **modu
 
 ---
 
-## 🎉 Fase 1 SELESAI!
+## 🎉 Fase 1 & Step 4 SELESAI!
 
-Bukti: **`[BloxHub] DllMain PROCESS_ATTACH - SUCCESS!`** di **DebugView** (Capture Global Win32).
+**Fase 1:** `DllMain` berhasil dipanggil - bukti: **`[BloxHub] DllMain PROCESS_ATTACH - SUCCESS!`** di **DebugView**  
+**Step 4:** File write berhasil - bukti: file **`C:\test_bloxhub.txt`** dengan isi `hello from BloxHub!`
 
 ---
 
@@ -34,11 +35,14 @@ BloxHubInjector.exe
 
 Roblox version harus sesuai dengan `include/offsets.hpp` (`offsets::roblox_version`).
 
-### 4. Cek DebugView!
+### 4. Cek DebugView & File!
 Berhasil jika terlihat pesan:
 ```text
 [BloxHub] DllMain PROCESS_ATTACH - SUCCESS!
+[BloxHub] File written to C:\test_bloxhub.txt!
 ```
+
+Dan file `C:\test_bloxhub.txt` ada dengan isi: `hello from BloxHub!`
 
 ---
 
@@ -92,8 +96,9 @@ BloxHubExecutorNew/
 
 | Item | Status |
 |------|--------|
-| Module stomp inject | ✅ **Fase 1 SELESAI! |
+| Module stomp inject | ✅ **Fase 1 SELESAI!** |
 | Bukti `DllMain` | ✅ Terlihat di DebugView |
+| **Step 4: File write** | ✅ **SELESAI!** `C:\test_bloxhub.txt` berhasil dibuat |
 | `BloxHubInjector.exe` manual | ✅ workflow rekomendasi |
 | `BloxHub.exe --inject` | ⏸ gunakan manual dulu |
 | Sideload `dxgi.dll` | ❌ diblokir Hyperion |
