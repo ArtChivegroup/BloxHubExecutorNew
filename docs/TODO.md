@@ -85,7 +85,7 @@ CFG bypass dihapus. Injector diganti module stomp (Riviera-style).
 
 **Gagal:** Hanya `"init start"` → code crash di tengah. Lihat baris mana yang hilang = lokasi crash.
 
-**Status:** ⬜ belum dikerjakan
+**Status:** ✅ **SELESAI!** Test sukses! File berisi 3 baris log, Roblox tidak crash.
 
 ---
 

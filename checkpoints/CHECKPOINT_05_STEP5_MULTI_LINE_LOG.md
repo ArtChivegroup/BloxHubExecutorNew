@@ -26,7 +26,6 @@
   - `init end`
 - Setiap log ditampilkan di DebugView dengan prefix `[BloxHub]`
 - Build `BloxHubInternal.dll` berhasil
-- **Test sukses**: File berisi 3 baris log, Roblox tidak crash
 
 ---
 
@@ -65,5 +64,3 @@ init end
 
 - Test manual untuk memverifikasi
 - Step 6: Verify hijau di `BloxHub.cpp`
-
-

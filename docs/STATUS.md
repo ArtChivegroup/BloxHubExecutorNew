@@ -15,8 +15,8 @@ Dokumen ini adalah **satu sumber kebenaran** untuk kondisi proyek sekarang. Kala
 | Apa tujuan proyek ini? | Riset loader Windows untuk menjalankan payload di Roblox |
 | Apa yang **tidak** jalan? | **Sideload `dxgi.dll`** — diblokir Hyperion sebelum `DllMain` |
 | Apa yang dicoba sekarang? | **Module stomp inject** (Riviera-style, user-mode) |
-| Apakah inject sudah terbukti jalan? | **Fase 1 SELESAI!** — bukti: `[BloxHub] DllMain PROCESS_ATTACH - SUCCESS!` di DebugView |
-| Cara uji yang disarankan? | **`BloxHubInjector.exe`** — Roblox in-game dulu, lalu inject as Admin + cek DebugView |
+| Apakah inject sudah terbukti jalan? | **Fase 1 & Step 4-5 SELESAI!** — bukti: `[BloxHub]` di DebugView + file `C:\test_bloxhub.txt` dengan 3 baris log |
+| Cara uji yang disarankan? | **`BloxHubInjector.exe`** — Roblox in-game dulu, lalu inject as Admin + cek DebugView + file `C:\test_bloxhub.txt` |
 | Versi Roblox harus cocok? | **Ya** — path Bloxstrap harus sama dengan `offsets::roblox_version` |
 | Build di mana? | `build\bin\Release\` |
 | Perlu Admin? | **Ya** untuk inject |
@@ -104,20 +104,20 @@ PREFLIGHT → LAUNCH → WAIT GAME PID → INJECT → VERIFY
 
 ---
 
-## Hasil Uji Terakhir (Fase 1 Selesai!)
+## Hasil Uji Terakhir (Step 5 Selesai!)
 
-### Test Terakhir (2 Juli 2026 — Sukses!)
+### Test Terakhir (2 Juli 2026 — Sukses Besar!)
 
-**Test:** `BloxHubInjector.exe`, PID 9320, Roblox in-game, Admin, **DebugView Capture Global Win32**
+**Test:** `BloxHubInjector.exe`, PID 6520, Roblox in-game, Admin, **DebugView Capture Global Win32**
 
 | Cek | Hasil |
 |-----|--------|
 | Stomp map | ✅ `d3d10warp.dll` mapped |
-| Payload write | ✅ ~32 KB |
+| Payload write | ✅ 122880 bytes |
 | IoCompletion | ✅ `ZwSetIoCompletion OK` |
-| DllMain | ✅ **Terlihat di DebugView!** `[BloxHub] DllMain PROCESS_ATTACH - SUCCESS!` |
+| DllMain | ✅ **Terlihat di DebugView!** `[BloxHub] DllMain PROCESS_ATTACH - SUCCESS!`, `[BloxHub] init start`, `[BloxHub] init mid`, `[BloxHub] init end` |
 | Roblox crash | ✅ **tidak** |
-| DebugView | ✅ **Bukti empiris!** |
+| File `C:\test_bloxhub.txt` | ✅ **Berisi 3 baris log!** |
 
 **Fix penting untuk sukses:**
 1. **`TpDirect` struct di `tp_execute.cpp` diperbaiki** agar match contoh Riviera
@@ -162,10 +162,21 @@ REM 2. CMD as Administrator:
 BloxHubInjector.exe
 ```
 
-### 4. Cek DebugView
-Jika berhasil, akan terlihat:
+### 4. Cek DebugView & File
+Jika berhasil, akan terlihat di DebugView:
 ```text
 [BloxHub] DllMain PROCESS_ATTACH - SUCCESS!
+[BloxHub] init start
+[BloxHub] init mid
+[BloxHub] init end
+[BloxHub] All logs written to C:\test_bloxhub.txt!
+```
+
+Dan file `C:\test_bloxhub.txt` berisi:
+```text
+init start
+init mid
+init end
 ```
 
 ---
@@ -179,7 +190,7 @@ Jika berhasil, akan terlihat:
 5. `ARCHITECTURE.md` — diagram komponen  
 6. `BUGS.md` — daftar masalah terbuka  
 7. `PLANNING.md` — prioritas besar (P0–P4)  
-8. `../checkpoints/CHECKPOINT_CURRENT.md` — ringkasan sesi terakhir (Checkpoint 03 — Fase 1 Selesai!)
+8. `../checkpoints/CHECKPOINT_CURRENT.md` — ringkasan sesi terakhir (Checkpoint 05 — Step 5 Multi-Line Log!)
 
 ---
 
