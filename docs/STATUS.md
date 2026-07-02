@@ -15,8 +15,8 @@ Dokumen ini adalah **satu sumber kebenaran** untuk kondisi proyek sekarang. Kala
 | Apa tujuan proyek ini? | Riset loader Windows untuk menjalankan payload di Roblox |
 | Apa yang **tidak** jalan? | **Sideload `dxgi.dll`** — diblokir Hyperion sebelum `DllMain` |
 | Apa yang dicoba sekarang? | **Module stomp inject** (Riviera-style, user-mode) |
-| Apakah inject sudah terbukti jalan? | **Fase 1 & Step 4-5 SELESAI!** — bukti: `[BloxHub]` di DebugView + file `C:\test_bloxhub.txt` dengan 3 baris log |
-| Cara uji yang disarankan? | **`BloxHubInjector.exe`** — Roblox in-game dulu, lalu inject as Admin + cek DebugView + file `C:\test_bloxhub.txt` |
+| Apakah inject sudah terbukti jalan? | **Fase 1 & Step 4-6 SELESAI!** — bukti: `[BloxHub]` di DebugView + `[VERIFY] Payload loaded successfully!` |
+| Cara uji yang disarankan? | **`BloxHub.exe <path> --inject`** — jalankan sebagai Admin, perhatikan terminal! |
 | Versi Roblox harus cocok? | **Ya** — path Bloxstrap harus sama dengan `offsets::roblox_version` |
 | Build di mana? | `build\bin\Release\` |
 | Perlu Admin? | **Ya** untuk inject |
@@ -104,25 +104,26 @@ PREFLIGHT → LAUNCH → WAIT GAME PID → INJECT → VERIFY
 
 ---
 
-## Hasil Uji Terakhir (Step 5 Selesai!)
+## Hasil Uji Terakhir (Step 6 Selesai!)
 
 ### Test Terakhir (2 Juli 2026 — Sukses Besar!)
 
-**Test:** `BloxHubInjector.exe`, PID 6520, Roblox in-game, Admin, **DebugView Capture Global Win32**
+**Test:** `BloxHub.exe <path> --inject`, Roblox launched, PID 10000, Admin
 
 | Cek | Hasil |
 |-----|--------|
 | Stomp map | ✅ `d3d10warp.dll` mapped |
 | Payload write | ✅ 122880 bytes |
 | IoCompletion | ✅ `ZwSetIoCompletion OK` |
-| DllMain | ✅ **Terlihat di DebugView!** `[BloxHub] DllMain PROCESS_ATTACH - SUCCESS!`, `[BloxHub] init start`, `[BloxHub] init mid`, `[BloxHub] init end` |
+| Verify | ✅ **Terminal menampilkan `[VERIFY] Payload loaded successfully!`** |
 | Roblox crash | ✅ **tidak** |
-| File `C:\test_bloxhub.txt` | ✅ **Berisi 3 baris log!** |
+
+*(Catatan: File `C:\BloxHub\test.txt` dihapus segera setelah verifikasi berhasil, jadi tidak bisa dibaca setelahnya — ini normal!)*
 
 **Fix penting untuk sukses:**
 1. **`TpDirect` struct di `tp_execute.cpp` diperbaiki** agar match contoh Riviera
 2. **Hapus restore section protect** di `stomp_inject.cpp` (karena IoCompletion async)
-3. **Tambah `DisableThreadLibraryCalls`** di `dllmain.cpp`
+3. **Tambahkan `DisableThreadLibraryCalls`** di `dllmain.cpp`
 4. **Ganti ke IoCompletion** (bukan CreateRemoteThread!)
 
 ---
@@ -146,38 +147,20 @@ PREFLIGHT → LAUNCH → WAIT GAME PID → INJECT → VERIFY
 
 ## Cara Test Cepat (Saat Bangun Lagi)
 
-### 1. Install DebugView
-Download **DebugView** (Sysinternals) dari: https://learn.microsoft.com/id-id/sysinternals/downloads/debugview
-
-### 2. Setup DebugView
-- Jalankan DebugView **as Administrator**
-- Di menu DebugView: **Capture → Capture Global Win32** (centang!)
-
-### 3. Inject Roblox
+### 1. Opsi 1: Menggunakan `BloxHub.exe` (Recommended)
 ```cmd
 cd build\bin\Release
 
-REM 1. Buka Roblox, masuk game
-REM 2. CMD as Administrator:
-BloxHubInjector.exe
+REM Jalankan sebagai Administrator:
+BloxHub.exe <path_ke_RobloxPlayerBeta.exe> --inject
 ```
+Perhatikan terminal! Jika berhasil, akan muncul `[VERIFY] Payload loaded successfully!`.
 
-### 4. Cek DebugView & File
-Jika berhasil, akan terlihat di DebugView:
-```text
-[BloxHub] DllMain PROCESS_ATTACH - SUCCESS!
-[BloxHub] init start
-[BloxHub] init mid
-[BloxHub] init end
-[BloxHub] All logs written to C:\test_bloxhub.txt!
-```
-
-Dan file `C:\test_bloxhub.txt` berisi:
-```text
-init start
-init mid
-init end
-```
+### 2. Opsi 2: Menggunakan `BloxHubInjector.exe` (Manual)
+1. Buka Roblox dan masuk ke game
+2. Jalankan DebugView **as Administrator**, centang **Capture → Capture Global Win32**
+3. Jalankan `BloxHubInjector.exe` **as Administrator**
+4. Periksa DebugView dan file `C:\BloxHub\test.txt` (catatan: file akan dihapus jika menggunakan `BloxHub.exe`, tapi tidak jika menggunakan `BloxHubInjector.exe`)
 
 ---
 

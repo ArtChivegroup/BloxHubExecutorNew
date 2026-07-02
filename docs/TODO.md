@@ -95,9 +95,9 @@ CFG bypass dihapus. Injector diganti module stomp (Riviera-style).
 
 **Sukses:** Terminal print `[VERIFY] Payload loaded successfully!`.
 
-**Gagal:** Timeout → cek timing (apakah verify mulai sebelum file ditulis), tambah delay atau polling.
+**Gagal:** Timeout — cek timing (apakah verify mulai sebelum file ditulis), tambah delay atau polling.
 
-**Status:** ⬜ belum dikerjakan
+**Status:** ✅ **SELESAI! Test sukses!** Terminal menampilkan `[VERIFY] Payload loaded successfully!`
 
 ---
 

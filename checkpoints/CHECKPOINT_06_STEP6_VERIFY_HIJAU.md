@@ -62,5 +62,3 @@ Terminal output:
 ## Langkah Selanjutnya
 
 - Step 7: Baca nilai dari Roblox memory
-
-

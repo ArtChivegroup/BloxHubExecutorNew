@@ -139,6 +139,11 @@ static fs::path GetTempVerifyMarker()
     return fs::path(temp) / L"bloxhub_payload_loaded.txt";
 }
 
+static fs::path GetInjectVerifyMarker()
+{
+    return fs::path("C:\\BloxHub\\test.txt");
+}
+
 static fs::path GetTempDebugLog()
 {
     wchar_t temp[MAX_PATH] = {};
@@ -150,6 +155,7 @@ static void ClearVerifyArtifacts()
 {
     try { fs::remove(GetTempVerifyMarker()); } catch (...) {}
     try { fs::remove(GetTempDebugLog()); } catch (...) {}
+    try { fs::remove(GetInjectVerifyMarker()); } catch (...) {}
 }
 
 static bool HasInjectLogSignal()
@@ -467,6 +473,7 @@ static bool WaitForVerify(SessionInfo& session, bool inject_mode)
 {
     fs::path marker = fs::path(session.roblox_dir) / L"bloxhub_loaded.txt";
     fs::path fallback = GetTempVerifyMarker();
+    fs::path inject_marker = GetInjectVerifyMarker();
     fs::path debug_log = GetTempDebugLog();
 
     std::cout << "[VERIFY] Waiting for payload load signal...\n";
@@ -477,23 +484,29 @@ static bool WaitForVerify(SessionInfo& session, bool inject_mode)
     }
     else
     {
-        std::wcout << L"[*] Inject marker: " << fallback.wstring() << L"\n";
-        std::wcout << L"[*] Debug log: " << debug_log.wstring() << L"\n";
+        std::wcout << L"[*] Inject marker: " << inject_marker.wstring() << L"\n";
     }
     std::cout << "[*] Timeout: " << session.verify_timeout_sec << " seconds\n";
 
     int waited = 0;
     while (waited < session.verify_timeout_sec)
     {
-        bool ok = fs::exists(fallback) || HasInjectLogSignal();
-        if (!inject_mode)
-            ok = ok || fs::exists(marker);
+        bool ok = false;
+        if (inject_mode)
+        {
+            ok = fs::exists(inject_marker);
+        }
+        else
+        {
+            ok = fs::exists(marker) || fs::exists(fallback) || HasInjectLogSignal();
+        }
 
         if (ok)
         {
             std::cout << "[VERIFY] Payload loaded successfully!\n";
             try { fs::remove(marker); } catch (...) {}
             try { fs::remove(fallback); } catch (...) {}
+            try { fs::remove(inject_marker); } catch (...) {}
             session.state = SessionState::VERIFIED;
             session.Save();
             return true;
