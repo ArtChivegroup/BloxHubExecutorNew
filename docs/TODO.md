@@ -65,13 +65,15 @@ CFG bypass dihapus. Injector diganti module stomp (Riviera-style).
 
 ### Step 4 — Tulis file ke path absolut
 
-**Apa:** Di `DllMain`, tulis `"hello"` ke `C:\BloxHub\test.txt` (gunakan WinAPI langsung, tanpa CRT). Rebuild `BloxHubInternal.dll`, inject.
+**Apa:** Di `DllMain`, tulis `"hello from BloxHub!"` ke `C:\test_bloxhub.txt` (gunakan WinAPI langsung). Rebuild `BloxHubInternal.dll`, inject.
 
-**Sukses:** `C:\BloxHub\test.txt` ada dan isinya `"hello"`.
+**Sukses:** `C:\test_bloxhub.txt` ada dan isinya `"hello from BloxHub!"`, plus DebugView menampilkan pesan `[BloxHub] File written to C:\test_bloxhub.txt!`.
 
-**Gagal:** File tidak ada → kemungkinan `CreateDirectoryA` / `WriteFile` gagal di dalam proses Roblox. Coba ganti path ke `C:\test_bloxhub.txt` (tanpa folder).
+**Gagal:** File tidak ada → kemungkinan `CreateFileA` / `WriteFile` gagal di dalam proses Roblox.
 
-**Status:** ⬜ siap dikerjakan
+**File:** `src/internal/dllmain.cpp`
+
+**Status:** ✅ **SELESAI!** Test sukses!
 
 ---
 
